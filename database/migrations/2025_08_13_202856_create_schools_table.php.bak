@@ -1,0 +1,44 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('schools', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->string('shulesoft_code')->unique()->nullable(); // For existing schools
+            $table->string('location');
+            $table->string('address')->nullable();
+            $table->string('contact_phone')->nullable();
+            $table->string('contact_email')->nullable();
+            $table->string('principal_name')->nullable();
+            $table->string('region')->nullable();
+            $table->string('school_type')->nullable(); // Primary, Secondary, etc.
+            $table->enum('status', ['active', 'inactive', 'pending'])->default('active');
+            $table->decimal('latitude', 10, 8)->nullable();
+            $table->decimal('longitude', 11, 8)->nullable();
+            $table->integer('total_students')->default(0);
+            $table->decimal('fee_collection_percentage', 5, 2)->default(0.00);
+            $table->decimal('academic_index', 5, 2)->default(0.00);
+            $table->decimal('attendance_percentage', 5, 2)->default(0.00);
+            $table->json('settings')->nullable();
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('schools');
+    }
+};
