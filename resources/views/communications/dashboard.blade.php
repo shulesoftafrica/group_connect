@@ -10,14 +10,14 @@
             <h1 class="h3 mb-0 text-gray-800">Communications Dashboard</h1>
             <p class="mb-0 text-muted">Monitor and manage group-wide communications across all schools</p>
         </div>
-        <div class="d-flex gap-2">
+        <!-- <div class="d-flex gap-2">
             <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newCampaignModal">
                 <i class="fas fa-bullhorn me-2"></i>New Campaign
             </button>
             <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#quickMessageModal">
                 <i class="fas fa-paper-plane me-2"></i>Quick Message
             </button>
-        </div>
+        </div> -->
     </div>
 
     <!-- KPI Cards -->
@@ -105,7 +105,7 @@
 
     <!-- Charts Row -->
     <div class="row mb-4">
-        <div class="col-xl-8 col-lg-7">
+        <!-- <div class="col-xl-8 col-lg-7">
             <div class="card shadow mb-4">
                 <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
                     <h6 class="m-0 font-weight-bold text-primary">Communication Trends</h6>
@@ -114,9 +114,9 @@
                             <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
                         </a>
                         <div class="dropdown-menu dropdown-menu-right">
-                            <a class="dropdown-item" href="#">Last 7 days</a>
-                            <a class="dropdown-item" href="#">Last 30 days</a>
-                            <a class="dropdown-item" href="#">Last 3 months</a>
+                            <a class="dropdown-item period-filter" href="#" data-period="3months">Last 3 months</a>
+                            <a class="dropdown-item period-filter" href="#" data-period="6months">Last 6 months</a>
+                            <a class="dropdown-item period-filter" href="#" data-period="1year">Last 12 months</a>
                         </div>
                     </div>
                 </div>
@@ -124,7 +124,7 @@
                     <canvas id="communicationTrendsChart" width="100%" height="40"></canvas>
                 </div>
             </div>
-        </div>
+        </div> -->
 
         <div class="col-xl-4 col-lg-5">
             <div class="card shadow mb-4">
@@ -150,7 +150,7 @@
     </div>
 
     <!-- Active Campaigns and Recent Messages -->
-    <div class="row mb-4">
+    <!-- <div class="row mb-4">
         <div class="col-lg-6">
             <div class="card shadow mb-4">
                 <div class="card-header py-3 d-flex justify-content-between align-items-center">
@@ -213,7 +213,7 @@
                 </div>
             </div>
         </div>
-    </div>
+    </div> -->
 
     <!-- Schools Communication Overview -->
     <div class="card shadow mb-4">
@@ -246,7 +246,7 @@
                             <th>Active Campaigns</th>
                             <th>Last Message</th>
                             <th>Status</th>
-                            <th>Actions</th>
+                            <!-- <th>Actions</th> -->
                         </tr>
                     </thead>
                     <tbody>
@@ -280,7 +280,7 @@
                                     {{ $school['communication_status'] }}
                                 </span>
                             </td>
-                            <td>
+                            <!-- <td>
                                 <div class="dropdown">
                                     <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
                                         Actions
@@ -291,7 +291,7 @@
                                         <li><a class="dropdown-item" href="#"><i class="fas fa-cog me-2"></i>Communication Settings</a></li>
                                     </ul>
                                 </div>
-                            </td>
+                            </td> -->
                         </tr>
                         @endforeach
                     </tbody>
@@ -412,67 +412,139 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 // Communication Trends Chart
-const ctx1 = document.getElementById('communicationTrendsChart').getContext('2d');
-new Chart(ctx1, {
-    type: 'line',
-    data: {
-        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-        datasets: [{
-            label: 'SMS',
-            data: [1200, 1450, 1350, 1600, 1750, 1820],
-            borderColor: 'rgb(75, 192, 192)',
-            backgroundColor: 'rgba(75, 192, 192, 0.1)',
-            tension: 0.1
-        }, {
-            label: 'Email',
-            data: [800, 920, 850, 1100, 1200, 1250],
-            borderColor: 'rgb(255, 99, 132)',
-            backgroundColor: 'rgba(255, 99, 132, 0.1)',
-            tension: 0.1
-        }, {
-            label: 'WhatsApp',
-            data: [200, 280, 320, 450, 520, 580],
-            borderColor: 'rgb(54, 162, 235)',
-            backgroundColor: 'rgba(54, 162, 235, 0.1)',
-            tension: 0.1
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-            y: {
-                beginAtZero: true
+let communicationChart;
+const communicationTrendsElement = document.getElementById('communicationTrendsChart');
+if (communicationTrendsElement) {
+    const ctx1 = communicationTrendsElement.getContext('2d');
+
+    function initializeCommunicationChart(data) {
+        communicationChart = new Chart(ctx1, {
+            type: 'line',
+            data: {
+                labels: data.labels,
+                datasets: data.datasets
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            precision: 0
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': ' + context.parsed.y.toLocaleString() + ' messages';
+                            }
+                        }
+                    }
+                },
+                interaction: {
+                    mode: 'nearest',
+                    axis: 'x',
+                    intersect: false
+                }
             }
-        }
+        });
+    }
+
+    // Initialize chart with initial data
+    const initialData = @json($communication_trends);
+    initializeCommunicationChart(initialData);
+}
+
+// Handle period filter clicks
+document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('period-filter')) {
+        e.preventDefault();
+        const period = e.target.getAttribute('data-period');
+        updateCommunicationChart(period);
+
+        // Update active state
+        document.querySelectorAll('.period-filter').forEach(item => {
+            item.classList.remove('active');
+        });
+        e.target.classList.add('active');
     }
 });
 
+// Function to update chart data
+function updateCommunicationChart(period) {
+    // Show loading state
+    const chartContainer = document.querySelector('#communicationTrendsChart').parentElement;
+    chartContainer.style.opacity = '0.6';
+
+    fetch(`{{ route('communications.trends-data') }}?period=${period}`, {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        communicationChart.data.labels = data.labels;
+        communicationChart.data.datasets = data.datasets;
+        communicationChart.update('active');
+
+        // Remove loading state
+        chartContainer.style.opacity = '1';
+    })
+    .catch(error => {
+        console.error('Error updating chart:', error);
+
+        // Remove loading state
+        chartContainer.style.opacity = '1';
+
+        // Show user-friendly error message
+        alert('Failed to update chart data. Please try again.');
+    });
+}
+
 // Message Types Chart
-const ctx2 = document.getElementById('messageTypesChart').getContext('2d');
-new Chart(ctx2, {
-    type: 'doughnut',
-    data: {
-        labels: ['SMS', 'Email', 'WhatsApp'],
-        datasets: [{
-            data: [54.6, 33.9, 11.5],
-            backgroundColor: [
-                'rgb(75, 192, 192)',
-                'rgb(255, 99, 132)',
-                'rgb(54, 162, 235)'
-            ]
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                display: false
+const messageTypesElement = document.getElementById('messageTypesChart');
+if (messageTypesElement) {
+    const ctx2 = messageTypesElement.getContext('2d');
+    new Chart(ctx2, {
+        type: 'doughnut',
+        data: {
+            labels: ['SMS', 'Email', 'WhatsApp'],
+            datasets: [{
+                data: [54.6, 33.9, 11.5],
+                backgroundColor: [
+                    'rgb(75, 192, 192)',
+                    'rgb(255, 99, 132)',
+                    'rgb(54, 162, 235)'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
             }
         }
-    }
-});
+    });
+}
 
 // Form handlers
 document.getElementById('messageType').addEventListener('change', function() {

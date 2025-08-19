@@ -10,7 +10,7 @@
             <h1 class="h3 mb-0 text-gray-800">Operations Dashboard</h1>
             <p class="text-muted mb-0">Monitor and manage operational performance across all schools</p>
         </div>
-        <div class="d-flex gap-2">
+        <!-- <div class="d-flex gap-2">
             <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#bulkActionModal">
                 <i class="bi bi-gear me-1"></i> Bulk Actions
             </button>
@@ -20,7 +20,7 @@
             <button class="btn btn-primary" onclick="refreshDashboard()">
                 <i class="bi bi-arrow-clockwise me-1"></i> Refresh
             </button>
-        </div>
+        </div> -->
     </div>
 
     <!-- Key Performance Indicators -->
@@ -127,11 +127,11 @@
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                Transport Performance
+                               Active Transport Routes
                             </div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                {{ $operationalKPIs['transport_metrics']['on_time_percentage'] }}%
-                                <small class="text-muted">On-time</small>
+                                {{ $operationalKPIs['transport_metrics']['active_routes'] }}
+                                <small class="text-muted">Routes</small>
                             </div>
                             <div class="text-xs text-muted mt-1">
                                 {{ $operationalKPIs['transport_metrics']['active_routes'] }} active routes
@@ -198,12 +198,12 @@
                 <div class="card-body">
                     <div class="row text-center">
                         <div class="col">
-                            <div class="text-xs text-muted text-uppercase">Issued Today</div>
-                            <div class="h5 font-weight-bold text-success">{{ $operationalKPIs['library_activity']['books_issued_today'] }}</div>
+                            <div class="text-xs text-muted text-uppercase">Total Books</div>
+                            <div class="h5 font-weight-bold text-success">{{ $operationalKPIs['library_activity']['books'] }}</div>
                         </div>
                         <div class="col">
-                            <div class="text-xs text-muted text-uppercase">Overdue</div>
-                            <div class="h5 font-weight-bold text-warning">{{ $operationalKPIs['library_activity']['overdue_books'] }}</div>
+                            <div class="text-xs text-muted text-uppercase">Issued Books</div>
+                            <div class="h5 font-weight-bold text-warning">{{ $operationalKPIs['library_activity']['issued'] }}</div>
                         </div>
                     </div>
                     <hr>
@@ -250,8 +250,7 @@
     </div>
 
     <!-- Charts and Alerts Row -->
-    <div class="row mb-4">
-        <!-- Performance Trends Chart -->
+    <!-- <div class="row mb-4">
         <div class="col-xl-8">
             <div class="card shadow mb-4">
                 <div class="card-header py-3 d-flex justify-content-between align-items-center">
@@ -273,7 +272,7 @@
             </div>
         </div>
 
-        <!-- Alerts Panel -->
+       
         <div class="col-xl-4">
             <div class="card shadow mb-4">
                 <div class="card-header py-3">
@@ -332,7 +331,7 @@
                 </div>
             </div>
         </div>
-    </div>
+    </div> -->
 
     <!-- Schools Overview -->
     <div class="card shadow mb-4">
@@ -367,7 +366,7 @@
                             <th>Attendance</th>
                             <th>Status</th>
                             <th>Last Activity</th>
-                            <th>Actions</th>
+                            <!-- <th>Actions</th> -->
                         </tr>
                     </thead>
                     <tbody>
@@ -389,7 +388,7 @@
                                     </div>
                                     <div>
                                         <div class="font-weight-bold">{{ $school['name'] }}</div>
-                                        <small class="text-muted">{{ $school['code'] }}</small>
+                                        <!-- <small class="text-muted">{{ $school['code'] }}</small> -->
                                     </div>
                                 </div>
                             </td>
@@ -427,7 +426,7 @@
                                 <span class="badge {{ $statusClass }}">{{ $statusText }}</span>
                             </td>
                             <td>{{ \Carbon\Carbon::parse($school['last_activity'])->diffForHumans() }}</td>
-                            <td>
+                            <!-- <td>
                                 <div class="btn-group" role="group">
                                     <a href="{{ route('operations.school', $school['id']) }}" 
                                        class="btn btn-sm btn-outline-primary">
@@ -438,7 +437,7 @@
                                         <i class="bi bi-gear"></i>
                                     </button>
                                 </div>
-                            </td>
+                            </td> -->
                         </tr>
                         @endforeach
                     </tbody>
@@ -448,14 +447,14 @@
     </div>
 
     <!-- Regional Performance Chart -->
-    <div class="card shadow mb-4">
+    <!-- <div class="card shadow mb-4">
         <div class="card-header py-3">
             <h6 class="m-0 font-weight-bold text-primary">Regional Performance Overview</h6>
         </div>
         <div class="card-body">
             <canvas id="regionalPerformanceChart" width="100%" height="40"></canvas>
         </div>
-    </div>
+    </div> -->
 </div>
 
 <!-- Bulk Action Modal -->

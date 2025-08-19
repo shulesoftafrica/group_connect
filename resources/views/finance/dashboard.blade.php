@@ -10,7 +10,7 @@
             <h1 class="h3 mb-0 text-gray-800">Finance & Accounts Dashboard</h1>
             <p class="text-muted mb-0">Comprehensive financial overview and management across all schools</p>
         </div>
-        <div class="d-flex gap-2">
+        <!-- <div class="d-flex gap-2">
             <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#bulkActionModal">
                 <i class="bi bi-gear me-1"></i> Bulk Actions
             </button>
@@ -20,7 +20,7 @@
             <button class="btn btn-primary" onclick="refreshDashboard()">
                 <i class="bi bi-arrow-clockwise me-1"></i> Refresh
             </button>
-        </div>
+        </div> -->
     </div>
 
     <!-- Financial KPIs Row -->
@@ -125,13 +125,13 @@
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                Total Bank Balance
+                                Total Fixed Assets
                             </div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                TZS {{ number_format($financialKPIs['bank_balances']['total_balance'] / 1000000, 1) }}M
+                                TZS {{ number_format($financialKPIs['fixed_assets']['total_assets'] / 1000000, 1) }}M
                             </div>
                             <div class="text-xs text-muted mt-1">
-                                Across {{ count($bankAccounts) }} approved banks
+                                Across approved banks
                             </div>
                         </div>
                         <div class="col-auto">
@@ -155,26 +155,51 @@
                 <div class="card-body">
                     <div class="row text-center mb-3">
                         <div class="col">
-                            <div class="text-xs text-muted text-uppercase">Monthly Total</div>
-                            <div class="h5 font-weight-bold text-primary">TZS {{ number_format($financialKPIs['payroll_summary']['total_monthly'] / 1000000, 1) }}M</div>
+                            <div class="text-xs text-muted text-uppercase">Total Net Payments</div>
+                            <div class="h5 font-weight-bold text-primary">
+                                TZS {{ number_format($financialKPIs['payroll_summary']['total_net'] / 1000000, 1) }}M
+                            </div>
+                            <div class="text-xs text-muted mt-1">Net salaries paid</div>
                         </div>
+
                         <div class="col">
-                            <div class="text-xs text-muted text-uppercase">Pending</div>
-                            <div class="h5 font-weight-bold text-warning">TZS {{ number_format($financialKPIs['payroll_summary']['pending_payments'] / 1000000, 1) }}M</div>
+                            <div class="text-xs text-muted text-uppercase">Total PAYE (TRA)</div>
+                            <div class="h5 font-weight-bold text-warning">
+                                TZS {{ number_format($financialKPIs['payroll_summary']['paye_payments'] / 1000000, 1) }}M
+                            </div>
+                            <div class="text-xs text-muted mt-1">Taxes remitted</div>
+                        </div>
+
+                        <div class="col">
+                            <div class="text-xs text-muted text-uppercase">Pension Fund Issues</div>
+                            <div class="h5 font-weight-bold text-info">
+                                TZS {{ number_format($financialKPIs['payroll_summary']['total_pension_payment'] / 1000000, 1) }}M
+                            </div>
+                            <div class="text-xs text-muted mt-1">Employer & employee contributions</div>
+                        </div>
+
+                        <div class="col">
+                            <div class="text-xs text-muted text-uppercase">Total Allowances Issued</div>
+                            <div class="h5 font-weight-bold text-success">
+                                TZS {{ number_format($financialKPIs['payroll_summary']['total_allowances'] / 1000000, 1) }}M
+                            </div>
+                            <div class="text-xs text-muted mt-1">Allowances & reimbursements</div>
                         </div>
                     </div>
+
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <span class="text-sm font-weight-bold">Staff Cost Ratio</span>
                         <span class="badge bg-primary">{{ $financialKPIs['payroll_summary']['staff_cost_percentage'] }}%</span>
                     </div>
                     <div class="progress mb-3">
-                        <div class="progress-bar" role="progressbar" 
-                             style="width: {{ $financialKPIs['payroll_summary']['staff_cost_percentage'] }}%" 
-                             aria-valuenow="{{ $financialKPIs['payroll_summary']['staff_cost_percentage'] }}" 
+                        <div class="progress-bar" role="progressbar"
+                             style="width: {{ $financialKPIs['payroll_summary']['staff_cost_percentage'] }}%"
+                             aria-valuenow="{{ $financialKPIs['payroll_summary']['staff_cost_percentage'] }}"
                              aria-valuemin="0" aria-valuemax="100">
                         </div>
                     </div>
-                    @if($financialKPIs['payroll_summary']['overdue_count'] > 0)
+
+                    @if(!empty($financialKPIs['payroll_summary']['overdue_count']) && $financialKPIs['payroll_summary']['overdue_count'] > 0)
                     <div class="text-center">
                         <span class="badge bg-danger">{{ $financialKPIs['payroll_summary']['overdue_count'] }} overdue payments</span>
                     </div>
@@ -191,26 +216,51 @@
                     <i class="bi bi-clipboard-data"></i>
                 </div>
                 <div class="card-body">
+                    <!-- Budget Creation Status Overview -->
                     <div class="row text-center mb-3">
-                        <div class="col">
-                            <div class="text-xs text-muted text-uppercase">Approved</div>
-                            <div class="h5 font-weight-bold text-success">{{ $financialKPIs['budget_status']['approved_budgets'] }}</div>
+                        <div class="col-6">
+                            <div class="text-xs text-muted text-uppercase">Schools with Budget</div>
+                            <div class="h4 font-weight-bold text-success">
+                                {{ $financialKPIs['budget_status']['schools_with_budget'] ?? 0 }}
+                                <small class="text-muted">/ {{ $financialKPIs['budget_status']['total_schools'] ?? 0 }}</small>
+                            </div>
+                            <div class="progress mb-2" style="height: 6px;">
+                                <div class="progress-bar bg-success" 
+                                     style="width: {{ $financialKPIs['budget_status']['budget_completion_rate'] ?? 0 }}%"></div>
+                            </div>
+                            <small class="text-muted">{{ $financialKPIs['budget_status']['budget_completion_rate'] ?? 0 }}% completion rate</small>
                         </div>
-                        <div class="col">
-                            <div class="text-xs text-muted text-uppercase">Pending</div>
-                            <div class="h5 font-weight-bold text-warning">{{ $financialKPIs['budget_status']['pending_approval'] }}</div>
-                        </div>
-                        <div class="col">
-                            <div class="text-xs text-muted text-uppercase">Over Budget</div>
-                            <div class="h5 font-weight-bold text-danger">{{ $financialKPIs['budget_status']['over_budget_schools'] }}</div>
+                        <div class="col-6">
+                            <div class="text-xs text-muted text-uppercase">Missing Budget</div>
+                            <div class="h4 font-weight-bold text-danger">
+                                {{ $financialKPIs['budget_status']['schools_without_budget'] ?? 0 }}
+                            </div>
+                            @if(($financialKPIs['budget_status']['schools_without_budget'] ?? 0) > 0)
+                                <div class="mt-2">
+                                    <button class="btn btn-sm btn-outline-warning" 
+                                            onclick="showMissingBudgetSchools()" 
+                                            data-bs-toggle="tooltip" 
+                                            title="View schools that need budget creation">
+                                        <i class="bi bi-exclamation-triangle me-1"></i>View Schools
+                                    </button>
+                                </div>
+                            @else
+                                <small class="text-success"><i class="bi bi-check-circle"></i> All schools budgeted</small>
+                            @endif
                         </div>
                     </div>
-                    <div class="text-center">
-                        <div class="text-xs text-muted text-uppercase">Budget Variance</div>
-                        @if($financialKPIs['budget_status']['budget_variance'] > 0)
-                            <div class="h4 font-weight-bold text-danger">+{{ $financialKPIs['budget_status']['budget_variance'] }}%</div>
-                        @else
-                            <div class="h4 font-weight-bold text-success">{{ $financialKPIs['budget_status']['budget_variance'] }}%</div>
+
+                    <hr/>
+
+                    <!-- Action Recommendations -->
+                    <div class="mt-3">
+                        @if(($financialKPIs['budget_status']['schools_without_budget'] ?? 0) > 0)
+                            <div class="alert alert-warning alert-sm py-2 mb-2">
+                                <i class="bi bi-info-circle me-1"></i>
+                                <strong>Action Required:</strong> 
+                                {{ $financialKPIs['budget_status']['schools_without_budget'] }} schools need budget creation.
+                                <a href="#" onclick="initiateSchoolBudgetReminder()" class="alert-link">Send reminders</a>
+                            </div>
                         @endif
                     </div>
                 </div>
@@ -221,33 +271,26 @@
         <div class="col-lg-4">
             <div class="card shadow">
                 <div class="card-header py-3 d-flex justify-content-between align-items-center">
-                    <h6 class="m-0 font-weight-bold text-primary">Bank Distribution</h6>
+                    <h6 class="m-0 font-weight-bold text-primary">Bank Collection Distribution</h6>
                     <i class="bi bi-bank2"></i>
                 </div>
                 <div class="card-body">
                     <div class="mb-3">
-                        <div class="d-flex justify-content-between mb-1">
-                            <span class="text-sm">NMB Bank</span>
-                            <span class="font-weight-bold">TZS {{ number_format($financialKPIs['bank_balances']['nmb_total'] / 1000000, 1) }}M</span>
-                        </div>
-                        <div class="d-flex justify-content-between mb-1">
-                            <span class="text-sm">CRDB Bank</span>
-                            <span class="font-weight-bold">TZS {{ number_format($financialKPIs['bank_balances']['crdb_total'] / 1000000, 1) }}M</span>
-                        </div>
-                        <div class="d-flex justify-content-between mb-1">
-                            <span class="text-sm">NBC Bank</span>
-                            <span class="font-weight-bold">TZS {{ number_format($financialKPIs['bank_balances']['nbc_total'] / 1000000, 1) }}M</span>
-                        </div>
-                        <div class="d-flex justify-content-between">
-                            <span class="text-sm">Mkombozi Bank</span>
-                            <span class="font-weight-bold">TZS {{ number_format($financialKPIs['bank_balances']['mkombozi_total'] / 1000000, 1) }}M</span>
-                        </div>
+                        @foreach($financialKPIs['bank_balances'] as $bankName => $amount)
+                            <div class="d-flex justify-content-between mb-1">
+                                <span class="text-sm">{{ $bankName }}</span>
+                                <span class="font-weight-bold">
+                                    TZS {{ number_format( (float) ($amount ?? 0) / 1000000, 1) }}M
+                                </span>
+                            </div>
+                            <hr/>
+                        @endforeach
                     </div>
-                    <div class="text-center">
+                    <!-- <div class="text-center">
                         <button class="btn btn-sm btn-outline-primary" onclick="viewBankReconciliation()">
                             <i class="bi bi-check-square me-1"></i> Bank Reconciliation
                         </button>
-                    </div>
+                    </div> -->
                 </div>
             </div>
         </div>
@@ -281,64 +324,164 @@
         <!-- Financial Alerts Panel -->
         <div class="col-xl-4">
             <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Financial Alerts</h6>
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">Other Reports</h6>
+                    <small class="text-muted">{{ $reportsData['totals']['schools_count'] ?? count($schoolsList) }} schools</small>
                 </div>
-                <div class="card-body p-0">
-                    <div class="list-group list-group-flush">
-                        @foreach($alertsData['critical'] as $alert)
-                        <div class="list-group-item border-left-danger py-3">
-                            <div class="d-flex justify-content-between">
-                                <div>
-                                    <h6 class="mb-1 text-danger">
-                                        <i class="bi bi-exclamation-triangle me-1"></i>
-                                        {{ $alert['school'] }}
-                                    </h6>
-                                    <p class="mb-1 text-sm">{{ $alert['message'] }}</p>
-                                    @if(isset($alert['amount']))
-                                    <div class="text-sm font-weight-bold text-danger">
-                                        TZS {{ number_format($alert['amount']) }}
-                                    </div>
-                                    @endif
-                                    <small class="text-muted">{{ $alert['timestamp'] }}</small>
+                <div class="card-body p-3">
+                    <!-- 1. Other Revenue (Non-fee) -->
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="text-sm font-weight-bold">Other Revenue (Excluding School Fees)</div>
+                                <div class="text-xs text-muted">Non School Fee income streams</div>
+                            </div>
+                         </div>
+
+                        @php
+                            $otherRevTotal = $reportsData['other_revenue']['total'] ?? 0;
+                            $otherRevSources = $reportsData['other_revenue']['sources'] ?? [];
+                        @endphp
+
+                        <div class="d-flex justify-content-between align-items-center mt-2">
+                            <div>
+                                <div class="h6 font-weight-bold text-success">
+                                    TZS {{ number_format($otherRevTotal / 1000000, 1) }}M
                                 </div>
-                                @if($alert['action_required'])
-                                <button class="btn btn-sm btn-outline-danger">Action</button>
+                                <div class="text-xs text-muted">Contribution to group revenue: {{ $reportsData['other_revenue']['percentage_of_total'] ?? 0 }}%</div>
+                            </div>
+                            <div class="text-end text-sm">
+                                <div class="text-muted">Top sources</div>
+                                @if(!empty($otherRevSources) && is_array($otherRevSources))
+                                    @foreach(array_slice($otherRevSources, 0, 3) as $src)
+                                        <div>
+                                            <strong>{{ $src['name'] ?? 'Source' }}</strong>
+                                            <div class="text-success">TZS {{ number_format(($src['amount'] ?? 0) / 1000000, 1) }}M</div>
+                                        </div>
+                                    @endforeach
+                                @else
+                                    <div class="text-muted">No other revenue data</div>
                                 @endif
                             </div>
                         </div>
-                        @endforeach
-
-                        @foreach($alertsData['warnings'] as $alert)
-                        <div class="list-group-item border-left-warning py-3">
-                            <div class="d-flex justify-content-between">
-                                <div>
-                                    <h6 class="mb-1 text-warning">
-                                        <i class="bi bi-exclamation-circle me-1"></i>
-                                        {{ $alert['school'] }}
-                                    </h6>
-                                    <p class="mb-1 text-sm">{{ $alert['message'] }}</p>
-                                    <small class="text-muted">{{ $alert['timestamp'] }}</small>
-                                </div>
-                            </div>
-                        </div>
-                        @endforeach
-
-                        @foreach($alertsData['info'] as $alert)
-                        <div class="list-group-item py-3">
-                            <div class="d-flex justify-content-between">
-                                <div>
-                                    <h6 class="mb-1 text-info">
-                                        <i class="bi bi-info-circle me-1"></i>
-                                        {{ $alert['school'] }}
-                                    </h6>
-                                    <p class="mb-1 text-sm">{{ $alert['message'] }}</p>
-                                    <small class="text-muted">{{ $alert['timestamp'] }}</small>
-                                </div>
-                            </div>
-                        </div>
-                        @endforeach
                     </div>
+
+                    <hr/>
+
+                    <!-- 2. Discount Reports -->
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="text-sm font-weight-bold">Discounts Issued</div>
+                                <div class="text-xs text-muted">Monitor discounting impact on collections</div>
+                            </div>
+                        </div>
+
+                        @php
+                            $discountTotal = $reportsData['discounts']['total_amount'] ?? 0;
+                            $discountCount = $reportsData['discounts']['count'] ?? 0;
+                            $discountTop = $reportsData['discounts']['top_types'] ?? [];
+                        @endphp
+
+                        <div class="row mt-2">
+                            <div class="col-6">
+                                <div class="text-xs text-muted">Total Discounted (YTD)</div>
+                                <div class="h6 font-weight-bold text-warning">TZS {{ number_format($discountTotal / 1000000, 1) }}M</div>
+                                <div class="text-xs text-muted">{{ $discountCount }} discount transactions</div>
+                            </div>
+                            <div class="col-6">
+                                <div class="text-xs text-muted">Top Discount Types</div>
+                                @if(!empty($discountTop))
+                                    <ul class="mb-0" style="padding-left:1rem;">
+                                        @foreach(array_slice($discountTop, 0, 3) as $d)
+                                            <li class="text-sm">
+                                                <strong>{{ $d['type'] ?? 'Type' }}</strong> — TZS {{ number_format(($d['amount'] ?? 0) / 1000000, 1) }}M
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                @else
+                                    <div class="text-sm text-muted">No discount breakdown</div>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr/>
+
+                    <!-- 3. Student Exemptions -->
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="text-sm font-weight-bold">Student Fee Exemptions</div>
+                                <div class="text-xs text-muted">Students exempted from specific fees (transport, school fee etc)</div>
+                            </div>
+                        </div>
+
+                        @php
+                            $exemptCount = $reportsData['exemptions']['student_count'] ?? 0;
+                            $exemptValue = $reportsData['exemptions']['total_value'] ?? 0;
+                            $exemptTopReasons = $reportsData['exemptions']['top_reasons'] ?? [];
+                        @endphp
+
+                        <div class="d-flex justify-content-between align-items-center mt-2">
+                            <div>
+                                <div class="h6 font-weight-bold text-gray-800">{{ $exemptCount }} students</div>
+                                <div class="text-xs text-muted">Value exempted: TZS {{ number_format($exemptValue / 1000000, 1) }}M</div>
+                            </div>
+                            <div class="text-end text-sm">
+                                <div class="text-muted">Top reasons</div>
+                                @if(!empty($exemptTopReasons))
+                                    @foreach(array_slice($exemptTopReasons, 0, 3) as $r)
+                                        <div>{{ $r['reason'] ?? 'Reason' }} — {{ $r['count'] ?? 0 }} students</div>
+                                    @endforeach
+                                @else
+                                    <div class="text-muted">No exemption breakdown</div>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr/>
+
+                    <!-- 4. Inventory Report -->
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="text-sm font-weight-bold">Inventory Overview</div>
+                                <div class="text-xs text-muted">Stock value, low-stock alerts and turning inventory</div>
+                            </div>
+                        </div>
+
+                        @php
+                            $inventoryValue = $reportsData['inventory']['total_value'] ?? 0;
+                            $lowStockCount = $reportsData['inventory']['low_stock_count'] ?? 0;
+                            $slowMoving = $reportsData['inventory']['slow_moving'] ?? [];
+                        @endphp
+
+                        <div class="row mt-2">
+                            <div class="col-6">
+                                <div class="text-xs text-muted">Total Stock Value</div>
+                                <div class="h6 font-weight-bold text-info">TZS {{ number_format($inventoryValue / 1000000, 1) }}M</div>
+                                <div class="text-xs text-muted">{{ $lowStockCount }} SKUs low on stock</div>
+                            </div>
+                            <div class="col-6">
+                                <div class="text-xs text-muted">Slow-moving Items</div>
+                                @if(!empty($slowMoving))
+                                    <ul class="mb-0" style="padding-left:1rem;">
+                                        @foreach(array_slice($slowMoving, 0, 3) as $i)
+                                            <li class="text-sm">
+                                                {{ $i['item'] ?? 'Item' }} — {{ $i['months_stock'] ?? 'N/A' }} months
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                @else
+                                    <div class="text-sm text-muted">No slow-moving items flagged</div>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr/>
                 </div>
             </div>
         </div>
@@ -375,9 +518,9 @@
                             <th>Profit Margin</th>
                             <th>Outstanding</th>
                             <th>Collection Rate</th>
-                            <th>Bank Balance</th>
+                            <!-- <th>Bank Balance</th> -->
                             <th>Health</th>
-                            <th>Actions</th>
+                            <!-- <th>Actions</th> -->
                         </tr>
                     </thead>
                     <tbody>
@@ -399,7 +542,7 @@
                                     </div>
                                     <div>
                                         <div class="font-weight-bold">{{ $school['name'] }}</div>
-                                        <small class="text-muted">{{ $school['code'] }}</small>
+                                        <!-- <small class="text-muted">{{ $school['code'] }}</small> -->
                                     </div>
                                 </div>
                             </td>
@@ -441,11 +584,11 @@
                                     </div>
                                 </div>
                             </td>
-                            <td>
+                            <!-- <td>
                                 <span class="font-weight-bold text-info">
-                                    TZS {{ number_format($school['bank_balance'] / 1000000, 1) }}M
+                                    TZS 
                                 </span>
-                            </td>
+                            </td> -->
                             <td>
                                 @php
                                     $healthClass = match($school['financial_health']) {
@@ -459,7 +602,7 @@
                                 @endphp
                                 <span class="badge {{ $healthClass }}">{{ $healthText }}</span>
                             </td>
-                            <td>
+                            <!-- <td>
                                 <div class="btn-group" role="group">
                                     <a href="{{ route('finance.school', $school['id']) }}" 
                                        class="btn btn-sm btn-outline-primary">
@@ -470,7 +613,7 @@
                                         <i class="bi bi-gear"></i>
                                     </button>
                                 </div>
-                            </td>
+                            </td> -->
                         </tr>
                         @endforeach
                     </tbody>
@@ -615,306 +758,407 @@
 
 @push('scripts')
 <script>
-// Chart.js configurations
-const performanceData = @json($performanceData);
-const revenueExpenseData = @json($revenueExpenseData);
-
-// Financial Performance Chart
-const performanceCtx = document.getElementById('financialPerformanceChart').getContext('2d');
-const financialPerformanceChart = new Chart(performanceCtx, {
-    type: 'line',
-    data: {
-        labels: performanceData.months,
-        datasets: [{
-            label: 'Revenue (TZS)',
-            data: performanceData.revenue_trend,
-            borderColor: '#1cc88a',
-            backgroundColor: 'rgba(28, 200, 138, 0.1)',
-            borderWidth: 2,
-            fill: true,
-            tension: 0.3
-        }, {
-            label: 'Expenses (TZS)',
-            data: performanceData.expense_trend,
-            borderColor: '#f6c23e',
-            backgroundColor: 'rgba(246, 194, 62, 0.1)',
-            borderWidth: 2,
-            fill: true,
-            tension: 0.3
-        }, {
-            label: 'Profit (TZS)',
-            data: performanceData.profit_trend,
-            borderColor: '#4e73df',
-            backgroundColor: 'rgba(78, 115, 223, 0.1)',
-            borderWidth: 2,
-            fill: true,
-            tension: 0.3
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                position: 'top',
+(function () {
+    // Load Chart.js dynamically if it's not already available
+    function loadChartJS() {
+        return new Promise((resolve, reject) => {
+            if (typeof Chart !== 'undefined') {
+                return resolve();
             }
-        },
-        scales: {
-            y: {
-                beginAtZero: true,
-                ticks: {
-                    callback: function(value) {
-                        return 'TZS ' + (value / 1000000).toFixed(1) + 'M';
+            const s = document.createElement('script');
+            s.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+            s.async = true;
+            s.onload = () => resolve();
+            s.onerror = () => reject(new Error('Failed to load Chart.js'));
+            document.head.appendChild(s);
+        });
+    }
+
+    // Helper to run a function after DOM is ready
+    function runWhenReady(fn) {
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', fn);
+        } else {
+            fn();
+        }
+    }
+
+    function initChartsAndHandlers() {
+        // Chart.js configurations
+        const performanceData = @json($performanceData);
+        const revenueExpenseData = @json($revenueExpenseData);
+
+        // Only initialize charts if canvas elements exist
+        const perfEl = document.getElementById('financialPerformanceChart');
+        const revExpEl = document.getElementById('revenueExpenseChart');
+        const collEl = document.getElementById('collectionChart');
+
+        let financialPerformanceChart = null;
+        let revenueExpenseChart = null;
+        let collectionChart = null;
+
+        if (perfEl) {
+            const performanceCtx = perfEl.getContext('2d');
+            financialPerformanceChart = new Chart(performanceCtx, {
+                type: 'line',
+                data: {
+                    labels: performanceData.months,
+                    datasets: [{
+                        label: 'Revenue (TZS)',
+                        data: performanceData.revenue_trend,
+                        borderColor: '#1cc88a',
+                        backgroundColor: 'rgba(28, 200, 138, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.3
+                    }, {
+                        label: 'Expenses (TZS)',
+                        data: performanceData.expense_trend,
+                        borderColor: '#f6c23e',
+                        backgroundColor: 'rgba(246, 194, 62, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.3
+                    }, {
+                        label: 'Profit (TZS)',
+                        data: performanceData.profit_trend,
+                        borderColor: '#4e73df',
+                        backgroundColor: 'rgba(78, 115, 223, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function (value) {
+                                    return 'TZS ' + (value / 1000000).toFixed(1) + 'M';
+                                }
+                            }
+                        }
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
                     }
                 }
-            }
-        },
-        interaction: {
-            intersect: false,
-            mode: 'index'
-        }
-    }
-});
-
-// Revenue vs Expense Chart
-const revenueExpenseCtx = document.getElementById('revenueExpenseChart').getContext('2d');
-const revenueExpenseChart = new Chart(revenueExpenseCtx, {
-    type: 'bar',
-    data: {
-        labels: revenueExpenseData.slice(0, 8).map(item => item.school),
-        datasets: [{
-            label: 'Revenue',
-            data: revenueExpenseData.slice(0, 8).map(item => item.revenue),
-            backgroundColor: 'rgba(28, 200, 138, 0.8)',
-            borderColor: '#1cc88a',
-            borderWidth: 1
-        }, {
-            label: 'Expenses',
-            data: revenueExpenseData.slice(0, 8).map(item => item.expense),
-            backgroundColor: 'rgba(246, 194, 62, 0.8)',
-            borderColor: '#f6c23e',
-            borderWidth: 1
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                position: 'top',
-            }
-        },
-        scales: {
-            y: {
-                beginAtZero: true,
-                ticks: {
-                    callback: function(value) {
-                        return 'TZS ' + (value / 1000000).toFixed(1) + 'M';
-                    }
-                }
-            }
-        }
-    }
-});
-
-// Collection Efficiency Chart
-const collectionCtx = document.getElementById('collectionChart').getContext('2d');
-const collectionChart = new Chart(collectionCtx, {
-    type: 'doughnut',
-    data: {
-        labels: Object.keys(performanceData.collection_rates),
-        datasets: [{
-            data: Object.values(performanceData.collection_rates),
-            backgroundColor: [
-                '#4e73df',
-                '#1cc88a',
-                '#36b9cc',
-                '#f6c23e',
-                '#e74a3b'
-            ],
-            borderWidth: 2
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                position: 'bottom',
-            }
-        }
-    }
-});
-
-// Dashboard Functions
-function refreshDashboard() {
-    location.reload();
-}
-
-function updateFinancialChart(type) {
-    const chart = financialPerformanceChart;
-    
-    // Hide all datasets first
-    chart.data.datasets.forEach((dataset, index) => {
-        dataset.hidden = true;
-    });
-    
-    // Show selected datasets
-    switch(type) {
-        case 'revenue':
-            chart.data.datasets[0].hidden = false;
-            break;
-        case 'expenses':
-            chart.data.datasets[1].hidden = false;
-            break;
-        case 'profit':
-            chart.data.datasets[2].hidden = false;
-            break;
-        case 'all':
-            chart.data.datasets.forEach(dataset => {
-                dataset.hidden = false;
             });
-            break;
-    }
-    
-    chart.update();
-}
+        }
 
-function viewBankReconciliation() {
-    window.location.href = '/finance/bank-reconciliation';
-}
+        if (revExpEl) {
+            const revenueExpenseCtx = revExpEl.getContext('2d');
+            revenueExpenseChart = new Chart(revenueExpenseCtx, {
+                type: 'bar',
+                data: {
+                    labels: revenueExpenseData.slice(0, 8).map(item => item.school),
+                    datasets: [{
+                        label: 'Revenue',
+                        data: revenueExpenseData.slice(0, 8).map(item => item.revenue),
+                        backgroundColor: 'rgba(28, 200, 138, 0.8)',
+                        borderColor: '#1cc88a',
+                        borderWidth: 1
+                    }, {
+                        label: 'Expenses',
+                        data: revenueExpenseData.slice(0, 8).map(item => item.expense),
+                        backgroundColor: 'rgba(246, 194, 62, 0.8)',
+                        borderColor: '#f6c23e',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function (value) {
+                                    return 'TZS ' + (value / 1000000).toFixed(1) + 'M';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
 
-function quickFinancialActions(schoolId) {
-    alert('Quick financial actions for school ID: ' + schoolId);
-}
+        if (collEl) {
+            const collectionCtx = collEl.getContext('2d');
+            const regionCollectionData = @json($regionCollectionData);
+            
+            // Prepare data for the chart
+            const regionLabels = regionCollectionData.regions.map(region => region.location);
+            const regionValues = regionCollectionData.regions.map(region => region.percentage);
+            
+            collectionChart = new Chart(collectionCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: regionLabels.length > 0 ? regionLabels : ['No Data'],
+                    datasets: [{
+                        data: regionValues.length > 0 ? regionValues : [100],
+                        backgroundColor: [
+                            '#4e73df',
+                            '#1cc88a',
+                            '#36b9cc',
+                            '#f6c23e',
+                            '#e74a3b',
+                            '#858796',
+                            '#5a5c69'
+                        ],
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const region = regionCollectionData.regions[context.dataIndex];
+                                    if (region) {
+                                        return region.location + ': ' + region.percentage + '% (TZS ' + 
+                                               (region.total_revenue / 1000000).toFixed(1) + 'M)';
+                                    }
+                                    return context.label + ': ' + context.parsed + '%';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
 
-function executeBulkAction() {
-    const form = document.getElementById('bulkActionForm');
-    const formData = new FormData(form);
-    
-    const data = {};
-    for (let [key, value] of formData.entries()) {
-        if (data[key]) {
-            if (Array.isArray(data[key])) {
-                data[key].push(value);
-            } else {
-                data[key] = [data[key], value];
+        // Dashboard Functions
+        function refreshDashboard() {
+            location.reload();
+        }
+
+        function updateFinancialChart(type) {
+            if (!financialPerformanceChart) return;
+            const chart = financialPerformanceChart;
+
+            // Hide all datasets first
+            chart.data.datasets.forEach((dataset) => {
+                dataset.hidden = true;
+            });
+
+            // Show selected datasets
+            switch (type) {
+                case 'revenue':
+                    chart.data.datasets[0].hidden = false;
+                    break;
+                case 'expenses':
+                    chart.data.datasets[1].hidden = false;
+                    break;
+                case 'profit':
+                    chart.data.datasets[2].hidden = false;
+                    break;
+                case 'all':
+                    chart.data.datasets.forEach(dataset => {
+                        dataset.hidden = false;
+                    });
+                    break;
             }
-        } else {
-            data[key] = value;
-        }
-    }
-    
-    fetch('/finance/bulk-action', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-        },
-        body: JSON.stringify(data)
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert(data.message);
-            bootstrap.Modal.getInstance(document.getElementById('bulkActionModal')).hide();
-            refreshDashboard();
-        } else {
-            alert('Error: ' + data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('An error occurred while executing the action.');
-    });
-}
 
-function exportReport() {
-    const form = document.getElementById('exportForm');
-    const formData = new FormData(form);
-    
-    const data = {};
-    for (let [key, value] of formData.entries()) {
-        if (data[key]) {
-            if (Array.isArray(data[key])) {
-                data[key].push(value);
-            } else {
-                data[key] = [data[key], value];
+            chart.update();
+        }
+
+        function viewBankReconciliation() {
+            window.location.href = '/finance/bank-reconciliation';
+        }
+
+        function quickFinancialActions(schoolId) {
+            alert('Quick financial actions for school ID: ' + schoolId);
+        }
+
+        function executeBulkAction() {
+            const form = document.getElementById('bulkActionForm');
+            if (!form) return;
+            const formData = new FormData(form);
+
+            const data = {};
+            for (let [key, value] of formData.entries()) {
+                if (data[key]) {
+                    if (Array.isArray(data[key])) {
+                        data[key].push(value);
+                    } else {
+                        data[key] = [data[key], value];
+                    }
+                } else {
+                    data[key] = value;
+                }
             }
-        } else {
-            data[key] = value;
+
+            fetch('/finance/bulk-action', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') || {}).getAttribute?.('content') || ''
+                },
+                body: JSON.stringify(data)
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message);
+                        const modalEl = document.getElementById('bulkActionModal');
+                        if (modalEl) {
+                            bootstrap.Modal.getInstance(modalEl)?.hide();
+                        }
+                        refreshDashboard();
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while executing the action.');
+                });
+        }
+
+        function exportReport() {
+            const form = document.getElementById('exportForm');
+            if (!form) return;
+            const formData = new FormData(form);
+
+            const data = {};
+            for (let [key, value] of formData.entries()) {
+                if (data[key]) {
+                    if (Array.isArray(data[key])) {
+                        data[key].push(value);
+                    } else {
+                        data[key] = [data[key], value];
+                    }
+                } else {
+                    data[key] = value;
+                }
+            }
+
+            fetch('/finance/export', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') || {}).getAttribute?.('content') || ''
+                },
+                body: JSON.stringify(data)
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message);
+                        const modalEl = document.getElementById('exportModal');
+                        if (modalEl) {
+                            bootstrap.Modal.getInstance(modalEl)?.hide();
+                        }
+                    } else {
+                        alert('Error: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred while exporting the report.');
+                });
+        }
+
+        // Attach event handlers (guarding for element existence)
+        const refreshBtn = document.querySelector('button[onclick="refreshDashboard()"]');
+        if (refreshBtn) refreshBtn.addEventListener('click', refreshDashboard);
+
+        // expose some functions to global scope used by inline onclicks
+        window.updateFinancialChart = updateFinancialChart;
+        window.viewBankReconciliation = viewBankReconciliation;
+        window.quickFinancialActions = quickFinancialActions;
+        window.executeBulkAction = executeBulkAction;
+        window.exportReport = exportReport;
+        window.refreshDashboard = refreshDashboard;
+
+        // Table filtering and search
+        const schoolSearchEl = document.getElementById('schoolSearch');
+        if (schoolSearchEl) {
+            schoolSearchEl.addEventListener('input', function () {
+                const searchTerm = this.value.toLowerCase();
+                const table = document.getElementById('schoolsTable');
+                if (!table) return;
+                const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+
+                for (let row of rows) {
+                    const schoolName = row.cells[0].textContent.toLowerCase();
+
+                    if (schoolName.includes(searchTerm)) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                }
+            });
+        }
+
+        const healthFilterEl = document.getElementById('healthFilter');
+        if (healthFilterEl) {
+            healthFilterEl.addEventListener('change', function () {
+                const filterValue = this.value;
+                const table = document.getElementById('schoolsTable');
+                if (!table) return;
+                const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+
+                for (let row of rows) {
+                    if (!filterValue) {
+                        row.style.display = '';
+                        continue;
+                    }
+
+                    const healthBadge = row.querySelector('.badge');
+                    const healthText = (healthBadge && healthBadge.textContent || '').toLowerCase();
+
+                    if (healthText === filterValue) {
+                        row.style.display = '';
+                    } else {
+                        row.style.display = 'none';
+                    }
+                }
+            });
+        }
+
+        // Export modal - select all functionality
+        const selectAllEl = document.getElementById('selectAllSchools');
+        if (selectAllEl) {
+            selectAllEl.addEventListener('change', function () {
+                const schoolCheckboxes = document.querySelectorAll('.school-checkbox');
+                schoolCheckboxes.forEach(checkbox => {
+                    checkbox.checked = this.checked;
+                });
+            });
         }
     }
-    
-    fetch('/finance/export', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-        },
-        body: JSON.stringify(data)
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            alert(data.message);
-            bootstrap.Modal.getInstance(document.getElementById('exportModal')).hide();
-        } else {
-            alert('Error: ' + data.message);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('An error occurred while exporting the report.');
-    });
-}
 
-// Table filtering and search
-document.getElementById('schoolSearch').addEventListener('input', function() {
-    const searchTerm = this.value.toLowerCase();
-    const table = document.getElementById('schoolsTable');
-    const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
-    
-    for (let row of rows) {
-        const schoolName = row.cells[0].textContent.toLowerCase();
-        
-        if (schoolName.includes(searchTerm)) {
-            row.style.display = '';
-        } else {
-            row.style.display = 'none';
-        }
-    }
-});
-
-document.getElementById('healthFilter').addEventListener('change', function() {
-    const filterValue = this.value;
-    const table = document.getElementById('schoolsTable');
-    const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
-    
-    for (let row of rows) {
-        if (!filterValue) {
-            row.style.display = '';
-            continue;
-        }
-        
-        const healthBadge = row.querySelector('.badge');
-        const healthText = healthBadge.textContent.toLowerCase();
-        
-        if (healthText === filterValue) {
-            row.style.display = '';
-        } else {
-            row.style.display = 'none';
-        }
-    }
-});
-
-// Export modal - select all functionality
-document.getElementById('selectAllSchools').addEventListener('change', function() {
-    const schoolCheckboxes = document.querySelectorAll('.school-checkbox');
-    schoolCheckboxes.forEach(checkbox => {
-        checkbox.checked = this.checked;
-    });
-});
+    // Load Chart.js then initialize charts after DOM ready
+    loadChartJS()
+        .then(() => {
+            runWhenReady(initChartsAndHandlers);
+        })
+        .catch(err => {
+            console.error('Chart.js failed to load:', err);
+        });
+})();
 </script>
 @endpush
 

@@ -4,12 +4,15 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use DB;
+
 
 class School extends Model
 {
     use HasFactory;
 
     protected $table = 'connect_schools';
+
 
     protected $fillable = [
         'school_setting_uid',
@@ -55,7 +58,151 @@ class School extends Model
      */
     public function schoolSetting()
     {
-        return $this->belongsTo(SchoolSetting::class, 'school_setting_uid', 'uid');
+        return $this->belongsTo(\App\Models\ShulesoftSetting::class, 'school_setting_uid', 'uid');
+    }
+
+    public function studentsCount()
+    {
+       return DB::table('shulesoft.student')
+            ->where('schema_name', $this->schoolSetting->schema_name)
+            ->where('status', 1)
+            ->count();
+    }
+
+    public function totalRevenue()
+    {
+        return DB::table('shulesoft.payments')
+            ->where('schema_name', $this->schoolSetting->schema_name)
+            ->whereYear('created_at', date('Y'))
+            ->sum('amount');
+    }
+
+    public function totalOtherRevenue()
+    {
+        return DB::table('shulesoft.revenues')
+            ->where('schema_name', $this->schoolSetting->schema_name)
+            ->whereYear('created_at', date('Y'))
+            ->sum('amount');
+    }
+
+    public function totalExpenses()
+    {
+        return DB::table('shulesoft.expenses')
+            ->where('schema_name', $this->schoolSetting->schema_name)
+            ->whereYear('created_at', date('Y'))
+            ->sum('amount');
+    }
+
+    public function outstandingFees()
+    {
+        return DB::table('shulesoft.material_invoice_balance')
+            ->where('schema_name', $this->schoolSetting->schema_name)
+           ->whereYear('end_date', date('Y'))
+            ->sum('total_amount') - $this->totalRevenue();
+    }
+
+    public function staffCount()
+    {
+       return DB::table('shulesoft.users')
+            ->where('schema_name', $this->schoolSetting->schema_name)
+            ->whereIn('table',['teacher','user'])
+            ->where('status', 1)
+            ->count();
+    }
+
+    public function teachersCount(){
+        return DB::table('shulesoft.users')
+            ->where('schema_name', $this->schoolSetting->schema_name)
+            ->where('table', 'teacher')
+            ->where('status', 1)
+            ->count();
+    }
+
+    public function messageSentTotal(){
+        return DB::table('shulesoft.sms')
+            ->where('schema_name', $this->schoolSetting->schema_name)
+            ->count();
+    }
+
+    public function lastLogDateTime()
+    {
+        $schemaName = $this->schoolSetting->schema_name ?? null;
+        if (!$schemaName) {
+            return null;
+        }
+
+        // Return the latest created_at value from shulesoft.log for this school's schema
+        return DB::table('shulesoft.log')
+            ->where('schema_name', $schemaName)
+            ->max('created_at');
+    }
+
+    public function avgPerformance()
+    {
+        return DB::table('shulesoft.mark')
+            ->where('schema_name', $this->schoolSetting->schema_name)
+            ->avg('mark');
+    }
+
+    public function attendanceRate()
+    {
+        return DB::table('shulesoft.sattendances')
+            ->where('schema_name', $this->schoolSetting->schema_name)
+            ->selectRaw('SUM(CASE WHEN present = 1 THEN 1 ELSE 0 END) * 100.0 / COUNT(*) as attendance_percentage')
+            ->value('attendance_percentage') ?? 0;
+    }
+
+    public function feeCollectionPercentage($start_date = null, $end_date = null)
+    {
+        $schemaName = $this->schoolSetting->schema_name ?? null;
+        if (!$schemaName) {
+            return 0;
+        }
+
+        // Default dates: Jan 1st and Dec 31st of current year
+        $year = date('Y');
+        $start_date = $start_date ?? "$year-01-01";
+        $end_date = $end_date ?? "$year-12-31";
+
+        // Total collected from payments within date range
+        $totalCollected = DB::table('shulesoft.payments')
+            ->where('schema_name', $schemaName)
+            ->whereBetween('date', [$start_date, $end_date])
+            ->sum('amount');
+
+        // Total to be collected from fees_installments_classes within date range
+        $totalToBeCollected = DB::table('shulesoft.material_invoice_balance')
+            ->where('schema_name', $schemaName)
+                ->where(function ($query) {
+                $query->whereBetween('end_date', [$this->start, $this->end])
+                      ->orWhereBetween('start_date', [$this->start, $this->end]);
+            })
+            ->sum('total_amount');
+
+        if ($totalToBeCollected == 0) {
+            return 0;
+        }
+
+        return round(($totalCollected / $totalToBeCollected) * 100, 2);
+    }
+
+    public function totalStaff(){
+        $schemaName = $this->schoolSetting->schema_name ?? null;
+        if (!$schemaName) {
+            return 0;
+        }
+
+        $totalTeachers = DB::table('shulesoft.teacher')
+            ->where('schema_name', $schemaName)
+            ->where('status', 1)
+            ->count();
+
+        $totalUsers = DB::table('shulesoft.user')
+            ->where('schema_name', $schemaName)
+            ->where('status', 1)
+            ->count();
+
+        return $totalTeachers + $totalUsers;
     }
 
     /**

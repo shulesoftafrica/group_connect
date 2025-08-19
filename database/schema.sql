@@ -28254,3 +28254,23 @@ CREATE OR REPLACE VIEW shulesoft.client_payment_status AS
   GROUP BY a.student_id, a.name, b.id, a.username, b.created_at, b.due_date, b.invoice_year;
 
 
+ALTER TABLE shulesoft.sessions
+    ALTER COLUMN last_activity TYPE timestamp without time zone
+    USING to_timestamp(last_activity);
+
+    create materialized view shulesoft.material_invoice_balance as
+select * from shulesoft.invoice_balance;
+
+CREATE TABLE shulesoft.school_creation_requests (
+    id SERIAL PRIMARY KEY,
+    school_name VARCHAR(255) NOT NULL,
+    location VARCHAR(255),
+    contact_person VARCHAR(255),
+    contact_email VARCHAR(255) UNIQUE,
+    contact_phone VARCHAR(50),
+    status VARCHAR(50) DEFAULT 'pending',
+	connect_user_id integer,
+    requested_at TIMESTAMP DEFAULT NOW(),
+	created_at timestamp without time zone,
+	updated_at timestamp without time zone
+);

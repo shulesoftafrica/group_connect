@@ -83,7 +83,7 @@
                     <select class="form-select" id="schoolFilter">
                         <option value="">All Schools</option>
                         @foreach($schools as $school)
-                        <option value="{{ $school->id }}">{{ $school->settings['school_name'] ?? 'Unknown School' }}</option>
+                        <option value="{{ $school->id }}">{{ $school->schoolSetting->sname ?? 'Unknown School' }}</option>
                         @endforeach
                     </select>
                 </div>

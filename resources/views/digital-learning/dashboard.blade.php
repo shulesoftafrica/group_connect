@@ -1,6 +1,7 @@
-@extends('layouts.admin')
+@extends('layouts.digital-learning')
 
 @section('title', 'AI Digital Learning Dashboard')
+@section('page-title', 'Dashboard')
 
 @section('content')
 <div class="container-fluid">
@@ -124,7 +125,7 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    <canvas id="digitalLearningTrendsChart" width="100%" height="40"></canvas>
+                    <!-- <canvas id="digitalLearningTrendsChart" width="100%" height="40"></canvas> -->
                 </div>
             </div>
         </div>
@@ -135,8 +136,9 @@
                     <h6 class="m-0 font-weight-bold text-primary">Content Types Distribution</h6>
                 </div>
                 <div class="card-body">
-                    <canvas id="contentTypesChart" width="100%" height="150"></canvas>
+                    <!-- <canvas id="contentTypesChart" width="100%" height="150"></canvas> -->
                     <div class="mt-3">
+                        <?php $content_types =[]?>
                         @foreach($content_types as $type => $data)
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <span class="text-sm">{{ $type }}</span>

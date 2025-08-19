@@ -1,6 +1,7 @@
-@extends('layouts.admin')
+@extends('layouts.settings')
 
 @section('title', 'System Configuration')
+@section('page-title', 'System Config')
 
 @section('content')
 <div class="container-fluid">
@@ -9,7 +10,7 @@
         <h1 class="h2">
             <i class="bi bi-gear-wide-connected me-2"></i>System Configuration
         </h1>
-        <div class="btn-toolbar mb-2 mb-md-0">
+        <!-- <div class="btn-toolbar mb-2 mb-md-0">
             <div class="btn-group me-2">
                 <button type="button" class="btn btn-outline-primary" onclick="previewChanges()">
                     <i class="bi bi-eye"></i> Preview
@@ -18,7 +19,7 @@
                     <i class="bi bi-arrow-clockwise"></i> Reset
                 </button>
             </div>
-        </div>
+        </div> -->
     </div>
 
     <form action="{{ route('settings.system-config.update') }}" method="POST" enctype="multipart/form-data">
@@ -293,7 +294,7 @@
                         </h6>
                     </div>
                     <div class="card-body">
-                        <div class="d-grid gap-2">
+                        <!-- <div class="d-grid gap-2">
                             <button type="button" class="btn btn-outline-primary btn-sm" onclick="testEmail()">
                                 <i class="bi bi-envelope-check me-2"></i>Test Email Settings
                             </button>
@@ -306,7 +307,7 @@
                             <button type="button" class="btn btn-outline-warning btn-sm" onclick="backupConfig()">
                                 <i class="bi bi-download me-2"></i>Backup Configuration
                             </button>
-                        </div>
+                        </div> -->
                     </div>
                 </div>
 
@@ -367,15 +368,15 @@
                 <div class="card">
                     <div class="card-body">
                         <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-primary">
+                            <!-- <button type="submit" class="btn btn-primary">
                                 <i class="bi bi-check-lg me-2"></i>Save Configuration
-                            </button>
-                            <button type="button" class="btn btn-outline-secondary" onclick="previewChanges()">
+                            </button> -->
+                            <!-- <button type="button" class="btn btn-outline-secondary" onclick="previewChanges()">
                                 <i class="bi bi-eye me-2"></i>Preview Changes
-                            </button>
-                            <a href="{{ route('settings.index') }}" class="btn btn-outline-danger">
+                            </button> -->
+                            <!-- <a href="{{ route('settings.index') }}" class="btn btn-outline-danger">
                                 <i class="bi bi-x-lg me-2"></i>Cancel
-                            </a>
+                            </a> -->
                         </div>
                     </div>
                 </div>

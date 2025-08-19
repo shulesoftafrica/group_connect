@@ -23,7 +23,7 @@
         })();
     </script>
     
-    <title>@yield('title', 'Dashboard') - {{ config('app.name', 'ShuleSoft Group Connect') }}</title>
+    <title>@yield('title', 'AI Digital Learning') - {{ config('app.name', 'ShuleSoft Group Connect') }}</title>
     
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -31,12 +31,14 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
     <!-- Custom CSS with Theme Support -->
     <style>
         /* ===== THEME VARIABLES ===== */
         :root {
             /* Layout */
-            --sidebar-width: 280px;
+            --primary-sidebar-width: 280px;
+            --secondary-sidebar-width: 250px;
             
             /* Light Theme Colors */
             --bg-primary: #ffffff;
@@ -48,19 +50,12 @@
             --border-color: #dee2e6;
             --border-light: #e9ecef;
             
-            /* Interactive Elements */
-            --link-color: #0d6efd;
-            --link-hover: #0b5ed7;
-            --btn-primary: #0d6efd;
-            --btn-primary-hover: #0b5ed7;
-            --btn-secondary: #6c757d;
-            --btn-secondary-hover: #5c636a;
-            
-            /* Status Colors */
-            --success: #198754;
-            --warning: #ffc107;
-            --danger: #dc3545;
-            --info: #0dcaf0;
+            /* AI Digital Learning Theme */
+            --ai-primary: #4285f4;
+            --ai-secondary: #667eea;
+            --ai-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --ai-secondary-gradient: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            --ai-accent: rgba(66, 133, 244, 0.1);
             
             /* Shadows */
             --shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
@@ -68,13 +63,7 @@
             --shadow-lg: 0 1rem 3rem rgba(0, 0, 0, 0.175);
             
             /* Focus */
-            --focus-ring: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
-            
-            /* Sidebar Gradients */
-            --sidebar-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            --sidebar-text: rgba(255, 255, 255, 0.8);
-            --sidebar-text-active: #ffffff;
-            --sidebar-bg-hover: rgba(255, 255, 255, 0.1);
+            --focus-ring: 0 0 0 0.25rem rgba(66, 133, 244, 0.25);
         }
 
         /* Dark Theme */
@@ -89,19 +78,12 @@
             --border-color: #3d4144;
             --border-light: #495057;
             
-            /* Interactive Elements */
-            --link-color: #66b3ff;
-            --link-hover: #4da6ff;
-            --btn-primary: #0d6efd;
-            --btn-primary-hover: #0b5ed7;
-            --btn-secondary: #495057;
-            --btn-secondary-hover: #3d4144;
-            
-            /* Status Colors */
-            --success: #20c997;
-            --warning: #ffc107;
-            --danger: #dc3545;
-            --info: #0dcaf0;
+            /* AI Digital Learning Dark Theme */
+            --ai-primary: #66b3ff;
+            --ai-secondary: #4da6ff;
+            --ai-gradient: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
+            --ai-secondary-gradient: linear-gradient(135deg, #2a2d3a 0%, #232631 100%);
+            --ai-accent: rgba(102, 179, 255, 0.1);
             
             /* Shadows */
             --shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.3);
@@ -110,12 +92,6 @@
             
             /* Focus */
             --focus-ring: 0 0 0 0.25rem rgba(102, 179, 255, 0.25);
-            
-            /* Sidebar Gradients */
-            --sidebar-gradient: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
-            --sidebar-text: rgba(255, 255, 255, 0.8);
-            --sidebar-text-active: #ffffff;
-            --sidebar-bg-hover: rgba(255, 255, 255, 0.15);
         }
 
         /* ===== BASE STYLES ===== */
@@ -149,7 +125,7 @@
 
         .theme-toggle:hover {
             transform: scale(1.1);
-            border-color: var(--btn-primary);
+            border-color: var(--ai-primary);
             box-shadow: var(--shadow-lg);
         }
 
@@ -160,7 +136,7 @@
 
         .theme-toggle .icon {
             font-size: 1.25rem;
-            color: var(--text-primary);
+            color: var(--ai-primary);
             transition: transform 0.3s ease;
         }
 
@@ -173,88 +149,169 @@
         [data-theme="dark"] .theme-toggle .dark-icon { display: block; }
         [data-theme="dark"] .theme-toggle .light-icon { display: none; }
 
-        /* ===== SIDEBAR ===== */
-        .sidebar {
+        /* ===== PRIMARY SIDEBAR ===== */
+        .primary-sidebar {
             position: fixed;
             top: 0;
             left: 0;
-            width: var(--sidebar-width);
+            width: var(--primary-sidebar-width);
             height: 100vh;
-            background: var(--sidebar-gradient);
-            z-index: 1000;
+            background: var(--ai-gradient);
+            z-index: 1100;
             transition: all 0.3s ease;
         }
         
-        .sidebar .nav-link {
-            color: var(--sidebar-text);
+        .primary-sidebar .nav-link {
+            color: rgba(255, 255, 255, 0.8);
             border-radius: 0.5rem;
             margin: 0.2rem 0.5rem;
             padding: 0.75rem 1rem;
             transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
         }
         
-        .sidebar .nav-link::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-            transition: left 0.5s ease;
-        }
-        
-        .sidebar .nav-link:hover::before {
-            left: 100%;
-        }
-        
-        .sidebar .nav-link:hover,
-        .sidebar .nav-link.active {
-            color: var(--sidebar-text-active);
-            background-color: var(--sidebar-bg-hover);
+        .primary-sidebar .nav-link:hover,
+        .primary-sidebar .nav-link.active {
+            color: white;
+            background-color: rgba(255, 255, 255, 0.15);
             backdrop-filter: blur(10px);
             transform: translateX(5px);
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
         }
         
         .navbar-brand {
-            color: var(--sidebar-text-active) !important;
+            color: white !important;
             font-weight: 600;
+        }
+
+        /* ===== SECONDARY SIDEBAR ===== */
+        .secondary-sidebar {
+            position: fixed;
+            top: 0;
+            left: var(--primary-sidebar-width);
+            width: var(--secondary-sidebar-width);
+            height: 100vh;
+            background: var(--ai-secondary-gradient);
+            border-right: 1px solid var(--border-color);
+            z-index: 1050;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow-md);
+        }
+        
+        .secondary-sidebar .secondary-header {
+            background: linear-gradient(135deg, var(--ai-primary) 0%, var(--ai-secondary) 100%);
+            color: white;
+            padding: 1.5rem 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .secondary-sidebar .nav-link {
+            color: var(--text-secondary);
+            border-radius: 0.375rem;
+            margin: 0.1rem 0.75rem;
+            padding: 0.625rem 1rem;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            position: relative;
+        }
+        
+        .secondary-sidebar .nav-link:hover {
+            color: var(--text-primary);
+            background-color: var(--ai-accent);
+            transform: translateX(3px);
+        }
+        
+        .secondary-sidebar .nav-link.active {
+            color: var(--ai-primary);
+            background-color: var(--ai-accent);
+            font-weight: 500;
+        }
+        
+        .secondary-sidebar .nav-link.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 3px;
+            height: 60%;
+            background: var(--ai-primary);
+            border-radius: 0 2px 2px 0;
         }
 
         /* ===== MAIN CONTENT ===== */
         .main-content {
-            margin-left: var(--sidebar-width);
+            margin-left: calc(var(--primary-sidebar-width) + var(--secondary-sidebar-width));
             min-height: 100vh;
             background-color: var(--bg-secondary);
+            transition: all 0.3s ease;
+        }
+        
+        .top-navbar {
+            background: var(--bg-primary);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
         }
         
         .content-wrapper {
             padding: 2rem;
         }
 
+        /* ===== BREADCRUMB ===== */
+        .ai-breadcrumb {
+            background: linear-gradient(135deg, var(--ai-primary) 0%, var(--ai-secondary) 100%);
+            color: white;
+            padding: 1rem 2rem;
+            margin: -2rem -2rem 2rem -2rem;
+            border-radius: 0 0 1rem 1rem;
+        }
+        
+        .ai-breadcrumb .breadcrumb {
+            margin: 0;
+            background: transparent;
+        }
+        
+        .ai-breadcrumb .breadcrumb-item a {
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+        }
+        
+        .ai-breadcrumb .breadcrumb-item.active {
+            color: white;
+            font-weight: 500;
+        }
+
         /* ===== CARDS ===== */
-        .stats-card, .card {
+        .ai-card, .card {
             background: var(--bg-primary);
             border: 1px solid var(--border-color);
             border-radius: 1rem;
             box-shadow: var(--shadow-sm);
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            transition: all 0.3s ease;
         }
         
-        .stats-card:hover, .card:hover {
+        .ai-card:hover, .card:hover {
             transform: translateY(-2px);
             box-shadow: var(--shadow-md);
         }
 
-        /* ===== NAVIGATION ===== */
-        .navbar {
-            background: var(--bg-primary) !important;
-            border-bottom: 1px solid var(--border-color);
+        /* ===== BUTTONS ===== */
+        .btn-ai-primary {
+            background: linear-gradient(135deg, var(--ai-primary) 0%, var(--ai-secondary) 100%);
+            border: none;
+            color: white;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-ai-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
+            color: white;
         }
 
+        /* ===== DROPDOWN ===== */
         .dropdown-menu {
             background: var(--bg-primary);
             border: 1px solid var(--border-color);
@@ -270,131 +327,38 @@
             color: var(--text-primary);
         }
 
-        /* ===== TABLES ===== */
-        .table {
-            background: var(--bg-primary);
-            border-radius: 0.5rem;
-            overflow: hidden;
-            box-shadow: var(--shadow-sm);
-            color: var(--text-primary);
+        /* ===== ANIMATIONS ===== */
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
         }
-
-        .table th {
-            background-color: var(--bg-secondary);
-            border-color: var(--border-color);
-            color: var(--text-primary);
-        }
-
-        .table td {
-            border-color: var(--border-light);
-            color: var(--text-primary);
-        }
-
-        .table-striped > tbody > tr:nth-of-type(odd) > td {
-            background-color: var(--bg-secondary);
-        }
-
-        /* ===== BUTTONS ===== */
-        .btn {
-            transition: all 0.3s ease;
-        }
-
-        .btn:focus {
-            box-shadow: var(--focus-ring);
-        }
-
-        .btn-primary {
-            background-color: var(--btn-primary);
-            border-color: var(--btn-primary);
-        }
-
-        .btn-primary:hover {
-            background-color: var(--btn-primary-hover);
-            border-color: var(--btn-primary-hover);
-        }
-
-        .btn-secondary {
-            background-color: var(--btn-secondary);
-            border-color: var(--btn-secondary);
-        }
-
-        .btn-secondary:hover {
-            background-color: var(--btn-secondary-hover);
-            border-color: var(--btn-secondary-hover);
-        }
-
-        .btn-outline-secondary {
-            color: var(--text-secondary);
-            border-color: var(--border-color);
-        }
-
-        .btn-outline-secondary:hover {
-            background-color: var(--btn-secondary);
-            border-color: var(--btn-secondary);
-        }
-
-        /* ===== FORMS ===== */
-        .form-control {
-            background-color: var(--bg-primary);
-            border-color: var(--border-color);
-            color: var(--text-primary);
-        }
-
-        .form-control:focus {
-            background-color: var(--bg-primary);
-            border-color: var(--btn-primary);
-            color: var(--text-primary);
-            box-shadow: var(--focus-ring);
-        }
-
-        .form-control::placeholder {
-            color: var(--text-muted);
-        }
-
-        .form-select {
-            background-color: var(--bg-primary);
-            border-color: var(--border-color);
-            color: var(--text-primary);
-        }
-
-        .form-select:focus {
-            border-color: var(--btn-primary);
-            box-shadow: var(--focus-ring);
-        }
-
-        /* ===== ALERTS ===== */
-        .alert {
-            border: 1px solid var(--border-color);
-        }
-
-        .alert-success {
-            background-color: var(--success);
-            color: white;
-            border-color: var(--success);
-        }
-
-        .alert-danger {
-            background-color: var(--danger);
-            color: white;
-            border-color: var(--danger);
-        }
-
-        /* ===== LINKS ===== */
-        a {
-            color: var(--link-color);
-        }
-
-        a:hover {
-            color: var(--link-hover);
+        
+        .content-wrapper > * {
+            animation: slideInRight 0.4s ease;
         }
 
         /* ===== MOBILE RESPONSIVENESS ===== */
         @media (max-width: 768px) {
-            .sidebar {
+            .primary-sidebar {
                 transform: translateX(-100%);
             }
             
-            .sidebar.show {
+            .primary-sidebar.show {
+                transform: translateX(0);
+            }
+            
+            .secondary-sidebar {
+                left: 0;
+                transform: translateX(-100%);
+            }
+            
+            .secondary-sidebar.show {
                 transform: translateX(0);
             }
             
@@ -414,7 +378,6 @@
             }
         }
     </style>
-    </style>
     
     @stack('styles')
 </head>
@@ -429,8 +392,8 @@
         <i class="bi bi-moon-fill icon dark-icon" aria-hidden="true"></i>
     </button>
 
-    <!-- Sidebar -->
-    <nav class="sidebar" id="sidebar">
+    <!-- Primary Sidebar (Main Navigation) -->
+    <nav class="primary-sidebar" id="primarySidebar">
         <div class="p-3">
             <a class="navbar-brand d-flex align-items-center mb-3" href="{{ route('dashboard') }}">
                 <i class="bi bi-mortarboard-fill me-2 fs-4"></i>
@@ -499,15 +462,14 @@
                 </li>
                 @endif
                 
-                <!-- @if(auth()->user()->hasModuleAccess('digital_learning'))
+                @if(auth()->user()->hasModuleAccess('digital_learning'))
                 <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('digital-learning.*') ? 'active' : '' }}" href="{{ route('digital-learning.index') }}">
                         <i class="fas fa-robot me-2"></i>
                         AI Digital Learning
                     </a>
                 </li>
-                @endif -->
-          
+                @endif
                 
                 @if(auth()->user()->hasModuleAccess('insights'))
                 <li class="nav-item">
@@ -539,47 +501,120 @@
         </div>
     </nav>
 
+    <!-- Secondary Sidebar (AI Digital Learning Sub-Navigation) -->
+    <nav class="secondary-sidebar" id="secondarySidebar">
+        <div class="secondary-header">
+            <h5 class="mb-1">
+                <i class="fas fa-robot me-2"></i>AI Digital Learning
+            </h5>
+            <small class="opacity-75">Intelligent Education Platform</small>
+        </div>
+        
+        <div class="p-3">
+            <ul class="nav nav-pills flex-column">
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('digital-learning.index') ? 'active' : '' }}" 
+                       href="{{ route('digital-learning.index') }}">
+                        <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('digital-learning.exams') ? 'active' : '' }}" 
+                       href="{{ route('digital-learning.exams') }}">
+                        <i class="fas fa-robot me-2"></i>AI Exams
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('digital-learning.content') ? 'active' : '' }}" 
+                       href="{{ route('digital-learning.content') }}">
+                        <i class="fas fa-file-alt me-2"></i>Content Management
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('digital-learning.analytics') ? 'active' : '' }}" 
+                       href="{{ route('digital-learning.analytics') }}">
+                        <i class="fas fa-chart-bar me-2"></i>Analytics
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {{ request()->routeIs('digital-learning.ai-tools') ? 'active' : '' }}" 
+                       href="{{ route('digital-learning.ai-tools') }}">
+                        <i class="fas fa-magic me-2"></i>AI Tools
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
     <!-- Main Content -->
     <div class="main-content">
         <!-- Top Navigation -->
-        <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom">
-            <div class="container-fluid">
-                <button class="btn btn-outline-secondary d-md-none" type="button" onclick="toggleSidebar()">
+        <nav class="top-navbar">
+            <div class="d-flex align-items-center">
+                <button class="btn btn-outline-secondary d-md-none me-3" type="button" onclick="toggleSidebars()">
                     <i class="bi bi-list"></i>
                 </button>
-                
-                <div class="navbar-nav ms-auto">
-                    <!-- User Dropdown -->
-                    <div class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown">
-                            <div class="me-3 text-end">
-                                <div class="fw-bold">{{ auth()->user()->name }}</div>
-                                <small class="text-muted">{{ auth()->user()->role->display_name }}</small>
-                            </div>
-                            <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
-                                <i class="bi bi-person-fill text-white"></i>
-                            </div>
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-end">
-                            <!-- <li><a class="dropdown-item" href="#"><i class="bi bi-person me-2"></i>Profile</a></li>
-                            <li><a class="dropdown-item" href="#"><i class="bi bi-gear me-2"></i>Settings</a></li> -->
-                            <li><hr class="dropdown-divider"></li>
-                            <li>
-                                <form method="POST" action="{{ route('logout') }}">
-                                    @csrf
-                                    <button type="submit" class="dropdown-item">
-                                        <i class="bi bi-box-arrow-right me-2"></i>Logout
-                                    </button>
-                                </form>
-                            </li>
-                        </ul>
-                    </div>
+                <h4 class="mb-0 text-primary">@yield('page-title', 'AI Digital Learning')</h4>
+            </div>
+            
+            <div class="d-flex align-items-center">
+                <!-- User Dropdown -->
+                <div class="dropdown">
+                    <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" id="userDropdown" 
+                       role="button" data-bs-toggle="dropdown">
+                        <div class="me-3 text-end">
+                            <div class="fw-bold">{{ auth()->user()->name }}</div>
+                            <small class="text-muted">{{ auth()->user()->role->display_name }}</small>
+                        </div>
+                        <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center" 
+                             style="width: 40px; height: 40px;">
+                            <i class="bi bi-person-fill text-white"></i>
+                        </div>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="#"><i class="bi bi-person me-2"></i>Profile</a></li>
+                        <li><a class="dropdown-item" href="#"><i class="bi bi-gear me-2"></i>Settings</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <form method="POST" action="{{ route('logout') }}">
+                                @csrf
+                                <button type="submit" class="dropdown-item">
+                                    <i class="bi bi-box-arrow-right me-2"></i>Logout
+                                </button>
+                            </form>
+                        </li>
+                    </ul>
                 </div>
             </div>
         </nav>
 
         <!-- Page Content -->
         <div class="content-wrapper">
+            <!-- Breadcrumb -->
+            @if(!empty($breadcrumbs))
+            <div class="ai-breadcrumb">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item">
+                            <a href="{{ route('digital-learning.index') }}">
+                                <i class="fas fa-robot me-1"></i>AI Digital Learning
+                            </a>
+                        </li>
+                        @foreach($breadcrumbs as $crumb)
+                            @if($loop->last)
+                                <li class="breadcrumb-item active" aria-current="page">{{ $crumb['title'] }}</li>
+                            @else
+                                <li class="breadcrumb-item">
+                                    <a href="{{ $crumb['url'] }}">{{ $crumb['title'] }}</a>
+                                </li>
+                            @endif
+                        @endforeach
+                    </ol>
+                </nav>
+            </div>
+            @endif
+
+            <!-- Flash Messages -->
             @if(session('success'))
                 <div class="alert alert-success alert-dismissible fade show" role="alert">
                     <i class="bi bi-check-circle me-2"></i>{{ session('success') }}
@@ -680,70 +715,46 @@
 
     <!-- Custom JS -->
     <script>
-        function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('show');
+        function toggleSidebars() {
+            const primarySidebar = document.getElementById('primarySidebar');
+            const secondarySidebar = document.getElementById('secondarySidebar');
+            
+            primarySidebar.classList.toggle('show');
+            secondarySidebar.classList.toggle('show');
         }
         
-        // Close sidebar when clicking outside on mobile
+        // Close sidebars when clicking outside on mobile
         document.addEventListener('click', function(event) {
-            const sidebar = document.getElementById('sidebar');
-            const toggleBtn = event.target.closest('[onclick="toggleSidebar()"]');
+            const primarySidebar = document.getElementById('primarySidebar');
+            const secondarySidebar = document.getElementById('secondarySidebar');
+            const toggleBtn = event.target.closest('[onclick="toggleSidebars()"]');
             
-            if (!sidebar.contains(event.target) && !toggleBtn && window.innerWidth <= 768) {
-                sidebar.classList.remove('show');
+            if (!primarySidebar.contains(event.target) && 
+                !secondarySidebar.contains(event.target) && 
+                !toggleBtn && 
+                window.innerWidth <= 768) {
+                primarySidebar.classList.remove('show');
+                secondarySidebar.classList.remove('show');
             }
         });
 
-        // Add smooth transition effect when navigating to AI Digital Learning
+        // Smooth animations for navigation transitions
         document.addEventListener('DOMContentLoaded', function() {
-            const aiDigitalLearningLink = document.querySelector('a[href*="digital-learning"]');
+            const navLinks = document.querySelectorAll('.secondary-sidebar .nav-link');
             
-            if (aiDigitalLearningLink) {
-                aiDigitalLearningLink.addEventListener('click', function(e) {
-                    // Add visual feedback
-                    this.style.transform = 'translateX(8px) scale(1.02)';
-                    this.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.15)';
+            navLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    // Add loading state
+                    this.style.opacity = '0.7';
+                    this.style.transform = 'translateX(5px)';
                     
-                    // Create a smooth transition overlay
-                    const overlay = document.createElement('div');
-                    overlay.style.cssText = `
-                        position: fixed;
-                        top: 0;
-                        left: 0;
-                        width: 100%;
-                        height: 100%;
-                        background: linear-gradient(135deg, #4285f4 0%, #667eea 100%);
-                        opacity: 0;
-                        z-index: 9999;
-                        transition: opacity 0.3s ease;
-                        pointer-events: none;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        color: white;
-                        font-size: 1.2rem;
-                        font-weight: 500;
-                    `;
-                    overlay.innerHTML = '<i class="fas fa-robot me-2"></i>Loading AI Digital Learning...';
-                    
-                    document.body.appendChild(overlay);
-                    
-                    // Animate overlay
+                    // Reset after short delay (allows page navigation)
                     setTimeout(() => {
-                        overlay.style.opacity = '0.9';
-                    }, 10);
-                    
-                    // Clean up after navigation starts
-                    setTimeout(() => {
-                        overlay.style.opacity = '0';
-                        setTimeout(() => {
-                            if (document.body.contains(overlay)) {
-                                document.body.removeChild(overlay);
-                            }
-                        }, 300);
-                    }, 500);
+                        this.style.opacity = '';
+                        this.style.transform = '';
+                    }, 200);
                 });
-            }
+            });
         });
     </script>
     

@@ -8,6 +8,7 @@ use App\Models\School;
 use App\Models\User;
 use App\Models\Organization;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 
 class OperationsController extends Controller
 {
@@ -84,74 +85,208 @@ class OperationsController extends Controller
 
     private function calculateOperationalKPIs()
     {
-        $schools = School::where('is_active', true)->get();
+        // Use user's active schools and related shulesoft schema names (same approach as DashboardController)
+        $user = Auth::user();
+        $schools = $user ? $user->schools()->active()->get() : School::where('is_active', true)->get();
         $totalSchools = $schools->count();
-        
+
+        // Resolve schema names for those schools (mirrors DashboardController->getSchemaNames)
+        $schemaNames = \DB::table('shulesoft.setting')
+            ->join('connect_schools', 'shulesoft.setting.uid', '=', 'connect_schools.school_setting_uid')
+            ->whereIn('connect_schools.id', $schools->pluck('id'))
+            ->pluck('shulesoft.setting.schema_name')
+            ->toArray();
+
+        // Time window used across several KPI queries (use current month as default)
+        $start = Carbon::now()->startOfMonth()->toDateString();
+        $end = Carbon::now()->endOfMonth()->toDateString();
+
+        // Helper to run safe queries against tables that may or may not have schema_name column.
+        $safe = function ($callback, $default = null) {
+            try {
+                return $callback();
+            } catch (\Throwable $e) {
+                return $default;
+            }
+        };
+
+        // Student attendance: use shulesoft.sattendances if available (calculated like DashboardController)
+        $studentAttendanceAvg = $safe(function () use ($schemaNames, $start, $end) {
+            $attendanceData = \DB::table('shulesoft.sattendances')
+                ->selectRaw("schema_name, SUM(CASE WHEN present = 1 THEN 1 ELSE 0 END)::float / NULLIF(COUNT(*),0) * 100 as attendance_percentage")
+                ->whereIn('schema_name', $schemaNames)
+                ->whereDate('created_at', '>=', $start)
+                ->whereDate('created_at', '<=', $end)
+                ->groupBy('schema_name')
+                ->pluck('attendance_percentage');
+
+            return $attendanceData->count() > 0 ? round($attendanceData->avg(), 2) : null;
+        }, null);
+
+
+        // Staff attendance: no explicit staff attendance table in schema.sql -> fallback default
+       
+        $staffAttendanceAvg = $safe(function () use ($schemaNames, $start, $end) {
+            $attendanceData = \DB::table('shulesoft.tattendances')
+                ->selectRaw("schema_name, SUM(CASE WHEN present = 1 THEN 1 ELSE 0 END)::float / NULLIF(COUNT(*),0) * 100 as attendance_percentage")
+                ->whereIn('schema_name', $schemaNames)
+                ->whereDate('created_at', '>=', $start)
+                ->whereDate('created_at', '<=', $end)
+                ->groupBy('schema_name')
+                ->pluck('attendance_percentage');
+
+            return $attendanceData->count() > 0 ? round($attendanceData->avg(), 2) : null;
+        }, null);
+
+        // Pending/operational requests: try to use shulesoft.application as a hint, else default
+        $pendingRequestsTotal = $safe(function () {
+            return (int)\DB::table('shulesoft.application')->whereNull('updated_at')->count();
+        }, null);
+
+        // Urgent / overdue estimation (best-effort): use entries older than 7 days as overdue if created_at exists
+        $pendingUrgent = $safe(function () {
+            // Many schemas don't include created_at for application; this is best-effort
+            return (int)\DB::table('shulesoft.application')->whereNull('updated_at')->whereDate('updated_at', '<', Carbon::now()->subDays(7))->count();
+        }, null);
+
+        $pendingOverdue = 0;
+
+        // Transport metrics: try to count transport_routes, otherwise fallback
+        $activeRoutes = $safe(function () use ($schemaNames) {
+            return (int)\DB::table('shulesoft.transport_routes')->whereIn('schema_name', $schemaNames)->count();
+        }, null);
+
+        $onTimePercentage = 0;
+        $incidentsToday = 0;
+
+        // Hostel occupancy: best-effort using hostels/hmembers; fall back if details aren't present
+        $totalCapacity = $safe(function () use ($schemaNames) {
+            // schema.sql does not define capacity column; try if present
+            if (\Schema::hasColumn('shulesoft.hostels', 'beds_no')) {
+                return (int)\DB::table('shulesoft.hostels')->whereIn('schema_name', $schemaNames)->sum('beds_no');
+            }
+            return null;
+        }, null);
+;
+        $currentOccupied = $safe(function () use ($schemaNames) {
+            // Prefer counting hostel members whose installment falls inside the reporting window.
+            if (\Schema::hasTable('shulesoft.hmembers') && \Schema::hasTable('shulesoft.installments')) {
+            return (int)\DB::table('shulesoft.hmembers')
+                ->join('shulesoft.installments', 'shulesoft.hmembers.installment_id', '=', 'shulesoft.installments.id')
+                ->whereIn('shulesoft.hmembers.schema_name', $schemaNames)
+                // count installments that overlap the [$start, $end] window
+                ->whereDate('shulesoft.installments.start_date', '<=', $this->end)
+                ->whereDate('shulesoft.installments.end_date', '>=', $this->start)
+                // if hmembers stores a numeric amount per record, sum it; otherwise count rows
+                ->count('shulesoft.hmembers.id');
+            }
+        }, null);
+
+ 
+
+        $occupancyRate = $totalCapacity > 0 ? round(($currentOccupied / $totalCapacity) * 100, 1) : rand(75, 95);
+        $hostelMaintenanceRequests = 0;
+
+        // Library activity: schema.sql doesn't expose library tables clearly -> default values
+        $books =  \DB::table('shulesoft.book_quantity')->whereIn('schema_name', $schemaNames)->count();
+
+        $issued = \DB::table('shulesoft.issue')->whereIn('schema_name', $schemaNames)->count();
+        $activeMembers = \DB::table('shulesoft.lmember')->whereIn('schema_name', $schemaNames)->count();;
+
+        // Teacher duties / compliance: no reliable schema mapping -> default
+        // Direct, non-safe query for performance: assume table exists and uses a standard timestamp column.
+        // This removes Schema checks and exception wrapping for faster execution.
+        $teacherAssignedToday = (int) \DB::table('shulesoft.teacher_duties')
+            ->whereIn('schema_name', $schemaNames)
+            ->whereDate('created_at', '>=', $start)
+            ->whereDate('created_at', '<=', $end)
+            ->count();
+      
+        // Count teachers without assigned duties in the reporting window (direct query for performance)
+        $totalTeachers = (int) \DB::table('shulesoft.teacher')->whereIn('schema_name', $schemaNames)
+            ->count();
+         $teacherUnassigned = $totalTeachers - $teacherAssignedToday;
+         $teacherComplianceRate = $totalTeachers > 0 ? round(($teacherAssignedToday / $totalTeachers) * 100, 1) : 0;
+
+        // Upcoming events: try application/other tables for scheduled items, else default
+        $upcomingThisWeek = $safe(function () {
+            // best-effort: many installations keep events outside this dump; fallback if not present
+            if (\Schema::hasTable('shulesoft.application')) {
+                // Not a perfect mapping, just a heuristic placeholder
+                return (int)\DB::table('shulesoft.application')->whereDate('updated_at', '>=', Carbon::now())->whereDate('updated_at', '<=', Carbon::now()->addWeek())->count();
+            }
+            return null;
+        }, null);
+
+        $upcomingThisMonth = 0;
+        $upcomingPendingApproval = 0;
+
         return [
             'total_schools' => $totalSchools,
             'student_attendance' => [
-                'average' => rand(85, 95),
-                'trend' => rand(-5, 5),
-                'schools_below_threshold' => rand(0, 3)
+                'average' => (float) $studentAttendanceAvg,
+                'trend' => 0, // trend calculation not available from schema reliably -> default
+                'schools_below_threshold' => max(0, (int)\DB::table('shulesoft.student')->where('status', 0)->whereIn('schema_name', $schemaNames)->count() ?: rand(0, 3))
             ],
             'staff_attendance' => [
-                'average' => rand(88, 98),
-                'trend' => rand(-3, 7),
-                'schools_below_threshold' => rand(0, 2)
+                'average' => (float) $staffAttendanceAvg,
+                'trend' => 0,
+                'schools_below_threshold' => 0
             ],
             'pending_requests' => [
-                'total' => rand(15, 45),
-                'urgent' => rand(2, 8),
-                'overdue' => rand(0, 5)
+                'total' => (int) $pendingRequestsTotal,
+                'urgent' => (int) $pendingUrgent,
+                'overdue' => (int) $pendingOverdue
             ],
             'transport_metrics' => [
-                'active_routes' => rand(50, 150),
-                'on_time_percentage' => rand(85, 95),
-                'incidents_today' => rand(0, 3)
+                'active_routes' => (int) $activeRoutes,
+                'on_time_percentage' => (float) $onTimePercentage,
+                'incidents_today' => (int) $incidentsToday
             ],
             'hostel_occupancy' => [
-                'total_capacity' => rand(800, 1200),
-                'current_occupancy' => rand(600, 1000),
-                'occupancy_rate' => rand(75, 95),
-                'maintenance_requests' => rand(5, 15)
+                'total_capacity' => (int) $totalCapacity,
+                'current_occupancy' => (int) $currentOccupied,
+                'occupancy_rate' => (float) $occupancyRate,
+                'maintenance_requests' => (int) $hostelMaintenanceRequests
             ],
             'library_activity' => [
-                'books_issued_today' => rand(50, 200),
-                'overdue_books' => rand(20, 80),
-                'active_members' => rand(300, 800)
+                'books' => (int) $books,
+                'issued' => (int) $issued,
+                'active_members' => (int) $activeMembers
             ],
             'teacher_duties' => [
-                'assigned_today' => rand(80, 150),
-                'compliance_rate' => rand(90, 100),
-                'unassigned' => rand(0, 5)
+                'assigned_today' => (int) $teacherAssignedToday,
+                'compliance_rate' => (float) $teacherComplianceRate,
+                'unassigned' => (int) $teacherUnassigned
             ],
             'upcoming_events' => [
-                'this_week' => rand(5, 15),
-                'this_month' => rand(20, 50),
-                'pending_approval' => rand(2, 8)
+                'this_week' => (int) $upcomingThisWeek,
+                'this_month' => (int) $upcomingThisMonth,
+                'pending_approval' => (int) $upcomingPendingApproval
             ]
         ];
     }
+    
 
     private function getSchoolsList()
     {
-        return School::with(['organization'])
-            ->where('is_active', true)
-            ->get()
-            ->map(function ($school) {
-                $settings = $school->settings ?? [];
-                
-                return [
-                    'id' => $school->id,
-                    'name' => $settings['school_name'] ?? 'Unknown School',
-                    'code' => $school->shulesoft_code,
-                    'region' => $settings['region'] ?? 'Unknown',
-                    'type' => $settings['school_type'] ?? 'Primary',
-                    'student_count' => $settings['total_students'] ?? rand(200, 1000),
-                    'staff_count' => $settings['total_staff'] ?? rand(20, 80),
+        $user = Auth::user();
+        $schools =$user->schools()->active()->get();
+
+        return $schools->map(function ($school) {
+            $settings = $school->schoolSetting ?? [];
+
+            return [
+                'id' => $school->id,
+                'name' => $settings->sname ?? 'Unknown School',
+                    'code' => $settings->login_code,
+                    'region' => $settings->address?? 'Unknown',
+                    'type' => $settings->school_type?? 'Primary',
+                    'student_count' => $school->studentsCount() ?? rand(200, 1000),
+                    'staff_count' => $school->staffCount() ?? rand(20, 80),
                     'operational_status' => $this->calculateOperationalStatus($school),
-                    'attendance_rate' => rand(80, 98),
-                    'last_activity' => Carbon::now()->subDays(rand(0, 7))->format('Y-m-d'),
+                    'attendance_rate' => round($school->attendanceRate(), 2),
+                    'last_activity' => $school->lastLogDateTime(),
                 ];
             });
     }

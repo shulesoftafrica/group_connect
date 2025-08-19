@@ -1,6 +1,7 @@
-@extends('layouts.admin')
+@extends('layouts.settings')
 
 @section('title', 'Audit Logs')
+@section('page-title', 'Audit Logs')
 
 @section('content')
 <div class="container-fluid">
@@ -197,7 +198,7 @@
                                     </td>
                                     <td>
                                         <div class="action-badge">
-                                            <span class="badge bg-{{ $this->getActionBadgeColor($log->action) }}">
+                                            <span class="badge bg-{{ getActionBadgeColor($log->action) }}">
                                                 {{ $log->action }}
                                             </span>
                                         </div>

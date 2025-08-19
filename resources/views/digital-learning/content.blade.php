@@ -1,6 +1,7 @@
-@extends('layouts.admin')
+@extends('layouts.digital-learning')
 
 @section('title', 'Digital Content Management')
+@section('page-title', 'Content Management')
 
 @section('content')
 <div class="container-fluid">

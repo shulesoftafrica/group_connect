@@ -10,7 +10,7 @@
             <h1 class="h3 mb-1 text-gray-800">Academic Dashboard</h1>
             <p class="text-muted">Group-wide academic performance overview and insights</p>
         </div>
-        <div class="d-flex gap-2">
+        <!-- <div class="d-flex gap-2">
             <button class="btn btn-outline-primary" onclick="exportReport('excel')">
                 <i class="fas fa-file-excel me-1"></i> Export Excel
             </button>
@@ -20,7 +20,7 @@
             <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#bulkActionModal">
                 <i class="fas fa-cogs me-1"></i> Bulk Actions
             </button>
-        </div>
+        </div> -->
     </div>
 
     <!-- Academic KPIs Row -->
@@ -34,7 +34,7 @@
                                 Total Students
                             </div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                {{ number_format($academicKPIs['total_students']) }}
+                                {{ number_format($totalStudents) }}
                             </div>
                         </div>
                         <div class="col-auto">
@@ -51,10 +51,10 @@
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                Average Attendance
+                                Total Exams Conducted
                             </div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                {{ $academicKPIs['average_attendance'] }}%
+                                {{ $totalExamsConducted }}
                             </div>
                         </div>
                         <div class="col-auto">
@@ -71,19 +71,17 @@
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                Academic Index
+                                Average Performance
                             </div>
                             <div class="row no-gutters align-items-center">
                                 <div class="col-auto">
                                     <div class="h5 mb-0 mr-3 font-weight-bold text-gray-800">
-                                        {{ $academicKPIs['average_academic_index'] }}%
+                                        {{ number_format($averageMark, 2) }}%
                                     </div>
                                 </div>
                                 <div class="col">
                                     <div class="progress progress-sm mr-2">
-                                        <div class="progress-bar bg-info" role="progressbar"
-                                             style="width: {{ $academicKPIs['average_academic_index'] }}%"
-                                             aria-valuenow="{{ $academicKPIs['average_academic_index'] }}" aria-valuemin="0"
+                                        <div class="progress-bar bg-info" role="progressbar" aria-valuemin="0"
                                              aria-valuemax="100"></div>
                                     </div>
                                 </div>
@@ -103,10 +101,10 @@
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                Group Pass Rate
+                                Total Subjects
                             </div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                {{ $academicKPIs['pass_rate'] }}%
+                                {{ $totalSubjects}}
                             </div>
                         </div>
                         <div class="col-auto">
@@ -169,42 +167,42 @@
     <!-- Schools Performance and Alerts Row -->
     <div class="row mb-4">
         <!-- Top & Bottom Performing Schools -->
-        <div class="col-lg-6">
+        <!-- <div class="col-lg-6">
             <div class="card shadow mb-4">
                 <div class="card-header py-3">
                     <h6 class="m-0 font-weight-bold text-primary">School Performance Overview</h6>
                 </div>
-                <div class="card-body">
+                <div class="card-body"> -->
                     <!-- Top Performing Schools -->
-                    <h6 class="text-success mb-3">
+                    <!-- <h6 class="text-success mb-3">
                         <i class="fas fa-trophy me-2"></i>Top Performing Schools
                     </h6>
                     @foreach($academicKPIs['top_performing_schools'] as $school)
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <div>
-                            <div class="font-weight-bold">{{ $school->settings['name'] }}</div>
-                            <small class="text-muted">{{ $school->settings['location'] }}</small>
+                            <div class="font-weight-bold">{{ $school->schoolSetting->sname }}</div>
+                            <small class="text-muted">{{ $school->schoolSetting->address }}</small>
                         </div>
                         <div class="text-right">
-                            <span class="badge badge-success">{{ $school->settings['academic_index'] }}%</span>
+                            <span class="badge badge-success">{{ $school->schoolSetting->name }}%</span>
                         </div>
                     </div>
-                    @endforeach
+                    @endforeach -->
 
-                    <hr>
+                    <!-- <hr> -->
 
                     <!-- Bottom Performing Schools -->
-                    <h6 class="text-warning mb-3">
+                    <!-- <h6 class="text-warning mb-3">
                         <i class="fas fa-exclamation-triangle me-2"></i>Schools Needing Support
                     </h6>
                     @foreach($academicKPIs['bottom_performing_schools'] as $school)
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <div>
-                            <div class="font-weight-bold">{{ $school->settings['name'] }}</div>
-                            <small class="text-muted">{{ $school->settings['location'] }}</small>
+                            <div class="font-weight-bold">{{ $school->schoolSetting->sname }}</div>
+                            <small class="text-muted">{{ $school->schoolSetting->location }}</small>
                         </div>
                         <div class="text-right">
-                            <span class="badge badge-warning">{{ $school->settings['academic_index'] }}%</span>
+                            <span class="badge badge-warning">{{ $school->schoolSetting->academic_index }}%</span>
                             <div>
                                 <a href="#" class="btn btn-sm btn-outline-primary mt-1">
                                     <i class="fas fa-hands-helping"></i> Support
@@ -213,12 +211,12 @@
                         </div>
                     </div>
                     @endforeach
-                </div>
-            </div>
-        </div>
+                </div> -->
+            <!-- </div>
+        </div> -->
 
         <!-- Academic Alerts -->
-        <div class="col-lg-6">
+        <!-- <div class="col-lg-6">
             <div class="card shadow mb-4">
                 <div class="card-header py-3 d-flex justify-content-between align-items-center">
                     <h6 class="m-0 font-weight-bold text-primary">Academic Alerts & Notifications</h6>
@@ -252,7 +250,7 @@
                     @endforelse
                 </div>
             </div>
-        </div>
+        </div> -->
     </div>
 
     <!-- Subject Performance and Teacher Stats -->
@@ -268,38 +266,74 @@
                         <table class="table table-hover">
                             <thead class="table-light">
                                 <tr>
-                                    <th>Subject</th>
-                                    <th>Average Score</th>
-                                    <th>Pass Rate</th>
-                                    <th>Trend</th>
-                                    <th>Actions</th>
+                                    <th>School</th>
+                                    <th class="text-center">Average</th>
+                                    <th class="text-center">Target</th>
+                                    <th class="text-center">Last Year</th>
+                                    <th class="text-center">YoY</th>
+                                    <th>Progress</th>
+                                    <!-- <th class="text-end">Actions</th> -->
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($academicKPIs['subjects_analysis'] as $subject)
-                                <tr>
-                                    <td class="font-weight-bold">{{ $subject['subject'] }}</td>
-                                    <td>
-                                        <span class="badge badge-{{ $subject['avg_score'] >= 75 ? 'success' : ($subject['avg_score'] >= 60 ? 'warning' : 'danger') }}">
-                                            {{ $subject['avg_score'] }}%
-                                        </span>
-                                    </td>
-                                    <td>{{ $subject['pass_rate'] }}%</td>
-                                    <td>
-                                        @if($subject['trend'] == 'up')
-                                            <i class="fas fa-arrow-up text-success"></i>
-                                        @elseif($subject['trend'] == 'down')
-                                            <i class="fas fa-arrow-down text-danger"></i>
-                                        @else
-                                            <i class="fas fa-minus text-warning"></i>
-                                        @endif
-                                    </td>
-                                    <td>
-                                        <button class="btn btn-sm btn-outline-primary" onclick="viewSubjectDetail('{{ $subject['subject'] }}')">
-                                            <i class="fas fa-eye"></i> View
-                                        </button>
-                                    </td>
-                                </tr>
+                                @foreach($academicKPIs['schools_performance'] as $school)
+                                    @php
+                                        $name   = $school['schema_name'] ?? ($school->schema_name ?? 'Unknown School');
+                                        $avg    = (float) ($school['average'] ?? ($school->average ?? 0));
+                                        $target = (float) ($school['target'] ?? ($school->target ?? 0));
+                                        $last   = (float) ($school['last_year_average'] ?? ($school->last_year_average ?? 0));
+                                        $yoy    = (float) ($school['yoy_growth_percent'] ?? ($school->yoy_growth_percent ?? 0));
+
+                                        // Badge color: success if meeting/exceeding target, warning if within 90% of target, danger otherwise
+                                        $badgeClass = $avg >= $target
+                                            ? 'success'
+                                            : ($target > 0 && $avg >= ($target * 0.9) ? 'success' : 'danger');
+
+                                        // Trend icon
+                                        $trendIcon = $yoy > 0 ? 'fa-arrow-up text-success' : ($yoy < 0 ? 'fa-arrow-down text-danger' : 'fa-minus text-muted');
+
+                                        // Progress width relative to target (cap at 100)
+                                        $progressPct = $target > 0 ? min(100, ($avg / $target) * 100) : min(100, $avg);
+                                    @endphp
+
+                                    <tr>
+                                        <td class="font-weight-bold">{{ $name }}</td>
+
+                                        <td class="text-center">
+                                            <span class="badge alert-{{ $badgeClass }}">
+                                                {{ number_format($avg, 1) }}%
+                                            </span>
+                                        </td>
+
+                                        <td class="text-center">
+                                            {{ number_format($target, 1) }}%
+                                        </td>
+
+                                        <td class="text-center">
+                                            {{ number_format($last, 1) }}%
+                                        </td>
+
+                                        <td class="text-center">
+                                            <i class="fas {{ $trendIcon }}" aria-hidden="true"></i>
+                                            <span class="ms-1">{{ number_format($yoy, 1) }}%</span>
+                                        </td>
+
+                                        <td style="min-width:180px;">
+                                            <div class="progress" style="height: 0.75rem;">
+                                                <div class="progress-bar bg-{{ $badgeClass }}" role="progressbar"
+                                                     style="width: {{ $progressPct }}%"
+                                                     aria-valuenow="{{ $progressPct }}" aria-valuemin="0" aria-valuemax="100">
+                                                </div>
+                                            </div>
+                                            <small class="text-muted">{{ number_format($progressPct, 0) }}% of target</small>
+                                        </td>
+
+                                        <!-- <td class="text-end">
+                                            <button class="btn btn-sm btn-outline-primary" data-school="{{ $name }}" onclick="viewSchoolDetail(this.dataset.school)">
+                                                <i class="fas fa-eye"></i> View
+                                            </button>
+                                        </td> -->
+                                    </tr>
                                 @endforeach
                             </tbody>
                         </table>
@@ -352,18 +386,88 @@
                         </div>
                     </div>
 
-                    <div class="mt-3">
+                    <!-- <div class="mt-3">
                         <button class="btn btn-primary btn-block">
                             <i class="fas fa-chalkboard-teacher me-1"></i> Teacher Reports
                         </button>
+                    </div> -->
+
+                    
+                </div>
+
+<div class="card shadow mb-12">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">Subject Insights</h6>
+    </div>
+    <div class="card-body p-0">
+        <div class="col-12 col-lg-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Top 5 Poor Performing Subjects</h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Subject</th>
+                                    <th class="text-center">Average</th>
+                                    <th class="text-center">Schools</th>
+                                    <th style="width:120px"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @php
+                                    $poorList = $academicKPIs['poor_performing_subjects'] ?? ($poorSubjects ?? []);
+                                    $poorSlice = is_array($poorList) ? array_slice($poorList, 0, 5) : (is_object($poorList) ? array_slice((array)$poorList, 0, 5) : []);
+                                @endphp
+
+                                @forelse($poorSlice as $subj)
+                                    @php
+                                        $name = $subj['name'] ?? ($subj->name ?? ($subj['subject'] ?? 'Unknown Subject'));
+                                        $avg  = (float) ($subj['average'] ?? $subj->avg ?? $subj['average_score'] ?? 0);
+                                        $schoolsAffected = $subj['schools'] ?? ($subj->affected_schools ?? []);
+                                        $schoolsCount = is_array($schoolsAffected) ? count($schoolsAffected) : (is_object($schoolsAffected) ? count((array)$schoolsAffected) : ($subj['school_count'] ?? ($subj->schoolCount ?? 0)));
+                                        $barClass = $avg < 40 ? 'danger' : ($avg < 60 ? 'warning' : 'secondary');
+                                        $barWidth = min(100, max(0, $avg));
+                                    @endphp
+
+                                    <tr>
+                                        <td class="align-middle">{{ $name }}</td>
+                                        <td class="text-center align-middle">{{ number_format($avg, 1) }}%</td>
+                                        <td class="text-center align-middle">{{ $schoolsCount }}</td>
+                                        <td class="align-middle">
+                                            <div class="progress" style="height:0.6rem;">
+                                                <div class="progress-bar bg-{{ $barClass }}" role="progressbar"
+                                                     style="width: {{ $barWidth }}%" aria-valuenow="{{ $barWidth }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="4" class="text-center text-muted py-3">No data for poor performing subjects.</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
                     </div>
                 </div>
+                <!-- <div class="card-footer text-end">
+                    <a href="#" class="btn btn-sm btn-outline-primary" onclick="showNotification('Opening subject diagnostics...', 'info')">
+                        View Details
+                    </a>
+                </div> -->
             </div>
         </div>
+                
+            </div>
+            
+        </div>
+       
     </div>
 
     <!-- Recent Academic Activities -->
-    <div class="row">
+    <!-- <div class="row">
         <div class="col-12">
             <div class="card shadow mb-4">
                 <div class="card-header py-3">
@@ -396,7 +500,7 @@
                 </div>
             </div>
         </div>
-    </div>
+    </div> -->
 </div>
 
 <!-- Bulk Actions Modal -->
@@ -449,22 +553,39 @@
 <script>
 // Performance Trends Chart
 const performanceCtx = document.getElementById('performanceTrendsChart').getContext('2d');
+
+// Map short month names to full names for display
+const monthMap = {
+    Jan: 'January', Feb: 'February', Mar: 'March', Apr: 'April',
+    May: 'May', Jun: 'June', Jul: 'July', Aug: 'August',
+    Sep: 'September', Oct: 'October', Nov: 'November', Dec: 'December'
+};
+
+// Get trends data from backend (should be in reverse order, Jan to Dec)
+const trends = {!! json_encode($performanceData['attendance_trends']) !!};
+
+// Sort trends by month order (Jan to Dec)
+const monthOrder = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const trendsSorted = monthOrder.map(m => trends.find(t => t.month === m) || {month: m, performance: null});
+
+// Prepare labels and data
+const labels = trendsSorted.map(item => monthMap[item.month]);
+const data = trendsSorted.map(item => item.performance !== null ? item.performance : null);
+
 const performanceTrendsChart = new Chart(performanceCtx, {
     type: 'line',
     data: {
-        labels: {!! json_encode(array_column($performanceData['attendance_trends'], 'month')) !!},
+        labels: labels,
         datasets: [{
-            label: 'Academic Performance',
-            data: {!! json_encode(array_column($performanceData['attendance_trends'], 'performance')) !!},
+            label: 'Academic Performance (%)',
+            data: data,
             borderColor: 'rgb(75, 192, 192)',
             backgroundColor: 'rgba(75, 192, 192, 0.2)',
-            tension: 0.1
-        }, {
-            label: 'Attendance Rate',
-            data: {!! json_encode(array_column($performanceData['attendance_trends'], 'attendance')) !!},
-            borderColor: 'rgb(255, 99, 132)',
-            backgroundColor: 'rgba(255, 99, 132, 0.2)',
-            tension: 0.1
+            tension: 0.3,
+            spanGaps: false,
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            fill: true
         }]
     },
     options: {
@@ -473,11 +594,25 @@ const performanceTrendsChart = new Chart(performanceCtx, {
         scales: {
             y: {
                 beginAtZero: true,
-                max: 100
+                max: 100,
+                title: {
+                    display: true,
+                    text: 'Performance (%)'
+                }
+            }
+        },
+        plugins: {
+            legend: {
+                display: true,
+                position: 'top'
+            },
+            tooltip: {
+                enabled: true
             }
         }
     }
 });
+
 
 // Regional Performance Chart
 const regionalCtx = document.getElementById('regionalPerformanceChart').getContext('2d');

@@ -7,15 +7,25 @@ use App\Models\School;
 use App\Models\User;
 use App\Models\Organization;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+
 
 class CommunicationsController extends Controller
 {
+   
+
     public function dashboard()
     {
+            $user = Auth::user();
+            $dashboard = app()->make(\App\Http\Controllers\DashboardController::class);
+            $schools = $dashboard->getUserSchools($user);
+            $this->schemaNames = $dashboard->getSchemaNames($schools);
+
         $data = $this->calculateCommunicationKPIs();
-        $data['schools'] = $this->getSchoolsCommunicationList();
+        $data['schools'] = $this->getSchoolsCommunicationList($schools);
         $data['campaigns'] = $this->getActiveCampaigns();
         $data['recentMessages'] = $this->getRecentMessages();
+        $data['communication_trends'] = $this->getCommunicationTrends();
         
         return view('communications.dashboard', $data);
     }
@@ -31,6 +41,18 @@ class CommunicationsController extends Controller
         $schools = School::all();
         $messageTemplates = $this->getMessageTemplates();
         return view('communications.messaging', compact('schools', 'messageTemplates'));
+    }
+
+    public function getTrendsData(Request $request)
+    {
+        $user = Auth::user();
+        $dashboard = app()->make(\App\Http\Controllers\DashboardController::class);
+        $schools = $dashboard->getUserSchools($user);
+        $this->schemaNames = $dashboard->getSchemaNames($schools);
+
+        $period = $request->get('period', '6months'); // 6months, 3months, 1year
+        
+        return response()->json($this->getCommunicationTrendsByPeriod($period));
     }
 
     public function analytics()
@@ -80,51 +102,163 @@ class CommunicationsController extends Controller
     private function calculateCommunicationKPIs()
     {
         // Sample data - in real implementation, fetch from actual communication logs
+        // Get actual data from database
+        $totalMessages = DB::table('shulesoft.sms')
+            ->whereIn('schema_name', $this->schemaNames)
+            ->count();
+            
+        $messagesThisMonth = DB::table('shulesoft.sms')
+            ->whereIn('schema_name', $this->schemaNames)
+            ->whereMonth('created_at', now()->month)
+            ->whereYear('created_at', now()->year)
+            ->count();
+            
+        $deliveredMessages = DB::table('shulesoft.sms')
+            ->whereIn('schema_name', $this->schemaNames)
+            ->where('status', 1)
+            ->count();
+            
+        $pendingMessages = DB::table('shulesoft.sms')
+            ->whereIn('schema_name', $this->schemaNames)
+            ->where('status', 0)
+            ->count();
+            
+        $failedMessages = DB::table('shulesoft.sms')
+            ->whereIn('schema_name', $this->schemaNames)
+            ->where('status', 3)
+            ->count();
+            
+        $qsmsCount = DB::table('shulesoft.sms')
+            ->whereIn('schema_name', $this->schemaNames)
+            ->where('sent_from', 'quicksms')
+            ->count();
+
+             $psmsCount = DB::table('shulesoft.sms')
+            ->whereIn('schema_name', $this->schemaNames)
+             ->whereRaw('LOWER(sent_from) = ?', ['phone-sms'])
+            ->count();
+            
+        $emailCount = DB::table('shulesoft.sms')
+            ->whereIn('schema_name', $this->schemaNames)
+            ->whereRaw('LOWER(sent_from) = ?', ['email'])
+            ->count();
+            
+        $whatsappCount = DB::table('shulesoft.sms')
+            ->whereIn('schema_name', $this->schemaNames)
+            ->whereRaw('LOWER(sent_from) = ?', ['whatsapp'])
+            ->count();
+            
+        $schoolsReached = DB::table('shulesoft.sms')
+            ->whereIn('schema_name', $this->schemaNames)
+            ->distinct('schema_name')
+            ->count();
+            
+        $deliveryRate = $totalMessages > 0 ? round(($deliveredMessages / $totalMessages) * 100, 1) : 0;
+         
+        $feedbackCount = DB::table('shulesoft.exam_comments')
+                ->whereIn('schema_name', $this->schemaNames)
+                ->count() + 
+                DB::table('constant.feedback')
+                ->whereIn('schema', $this->schemaNames)
+                ->count();
+                
+            $engagementRate = $totalMessages > 0 ? round(($feedbackCount / $totalMessages) * 100, 1) : 0;
+
         return [
-            'total_messages_sent' => 15420,
-            'messages_this_month' => 2340,
-            'active_campaigns' => 8,
-            'delivery_rate' => 98.5,
-            'engagement_rate' => 76.3,
-            'schools_reached' => School::count(),
-            'avg_response_time' => '2.4 hours',
-            'monthly_growth' => 12.5,
+            'total_messages_sent' => $totalMessages,
+            'messages_this_month' => $messagesThisMonth,
+            'active_campaigns' => DB::table('shulesoft.sms_content')
+                ->whereIn('schema_name', $this->schemaNames)
+                ->count(),
+            'delivery_rate' => $deliveryRate,
+            // Calculate engagement rate from actual feedback data
+            'engagement_rate' => $engagementRate,
+            'schools_reached' => $schoolsReached,
+            'avg_response_time' => '2.4 hours', // This would need response tracking
+            'monthly_growth' => 12.5, // This would need previous month comparison
             
             // Message type breakdown
             'message_types' => [
-                'SMS' => ['count' => 8420, 'percentage' => 54.6],
-                'Email' => ['count' => 5230, 'percentage' => 33.9],
-                'WhatsApp' => ['count' => 1770, 'percentage' => 11.5]
+            'Quick-SMS' => [
+                'count' => $qsmsCount, 
+                'percentage' => $totalMessages > 0 ? round(($qsmsCount / $totalMessages) * 100, 1) : 0
+            ],
+             'Phone-SMS' => [
+                'count' => $psmsCount, 
+                'percentage' => $totalMessages > 0 ? round(($psmsCount / $totalMessages) * 100, 1) : 0
+            ],
+            'Email' => [
+                'count' => $emailCount, 
+                'percentage' => $totalMessages > 0 ? round(($emailCount / $totalMessages) * 100, 1) : 0
+            ],
+            'WhatsApp' => [
+                'count' => $whatsappCount, 
+                'percentage' => $totalMessages > 0 ? round(($whatsappCount / $totalMessages) * 100, 1) : 0
+            ]
             ],
             
             // Delivery status
             'delivery_stats' => [
-                'delivered' => 15185,
-                'pending' => 145,
-                'failed' => 90
+            'delivered' => $deliveredMessages,
+            'pending' => $pendingMessages,
+            'failed' => $failedMessages
             ]
         ];
     }
 
-    private function getSchoolsCommunicationList()
+    private function getSchoolsCommunicationList($schools)
     {
-        $schools = School::all();
-        
         return $schools->map(function ($school) {
+            $total_sms_sent= $school->messageSentTotal();
+            $deliveryMessage=DB::table('shulesoft.sms')->where('schema_name', $school->schoolSetting->schema_name)->where('status', 1)->count();
+            $lastMessage = DB::table('shulesoft.sms')
+                ->where('schema_name', $school->schoolSetting->schema_name)
+                ->orderBy('created_at', 'desc')
+                ->value('created_at');
+                
+            $feedbackCount = DB::table('shulesoft.exam_comments')
+                ->where('schema_name', $school->schoolSetting->schema_name)
+                ->count() + 
+                DB::table('constant.feedback')
+                ->where('schema', $school->schoolSetting->schema_name)
+                ->count();
+                
+            $activeCampaigns = DB::table('shulesoft.sms_content')
+                ->where('schema_name', $school->schoolSetting->schema_name)
+                ->count();
+
             return [
                 'id' => $school->id,
-                'name' => $school->name ?? 'School ' . $school->id,
-                'location' => $school->address ?? 'Location ' . $school->id,
-                'messages_sent' => rand(150, 500),
-                'delivery_rate' => rand(85, 99) . '%',
-                'last_message' => now()->subDays(rand(1, 7))->format('M d, Y'),
-                'engagement_rate' => rand(60, 85) . '%',
-                'active_campaigns' => rand(1, 5),
-                'communication_status' => rand(0, 1) ? 'Active' : 'Moderate'
+                'name' => $school->schoolSetting->sname ?? 'School ' . $school->id,
+                'location' => $school->schoolSetting->address ?? 'Location ' . $school->id,
+                'messages_sent' => $total_sms_sent,
+                'delivery_rate' => $total_sms_sent > 0 ? round(($deliveryMessage/$total_sms_sent) * 100) . '%' : '0%',
+                'last_message' => $lastMessage ? \Carbon\Carbon::parse($lastMessage)->format('d M Y') : 'No messages',
+                'engagement_rate' => $total_sms_sent > 0 ? round(($feedbackCount / $total_sms_sent) * 100, 1) . '%' : '0%',
+                'active_campaigns' => $activeCampaigns,
+                'communication_status' => $this->getCommunicationStatus($lastMessage)
             ];
         });
     }
-
+           private function getCommunicationStatus($lastMessage)
+                {
+                    if (!$lastMessage) {
+                        return 'No Activity';
+                    }
+                    
+                    $lastMessageDate = \Carbon\Carbon::parse($lastMessage);
+                    $daysSinceLastMessage = $lastMessageDate->diffInDays(now());
+                    
+                    if ($daysSinceLastMessage <= 1) {
+                        return 'Active';
+                    } elseif ($daysSinceLastMessage <= 7) {
+                        return 'Recent';
+                    } elseif ($daysSinceLastMessage <= 30) {
+                        return 'Moderate';
+                    } else {
+                        return 'Inactive';
+                    }
+                }
     private function getActiveCampaigns()
     {
         // Sample active campaigns data
@@ -309,5 +443,96 @@ class CommunicationsController extends Controller
                 'type' => 'alert'
             ]
         ];
+    }
+
+    private function getCommunicationTrendsByPeriod($period = '6months')
+    {
+        $months = [];
+        $labels = [];
+        $smsData = [];
+        $emailData = [];
+        $whatsappData = [];
+
+        // Generate period based on request
+        switch ($period) {
+            case '3months':
+                $periodCount = 3;
+                break;
+            case '1year':
+                $periodCount = 12;
+                break;
+            default:
+                $periodCount = 6;
+                break;
+        }
+
+        // Generate months
+        for ($i = $periodCount - 1; $i >= 0; $i--) {
+            $month = now()->subMonths($i);
+            $months[] = $month;
+            $labels[] = $month->format('M Y');
+        }
+
+        // Get actual data for each month and message type
+        foreach ($months as $month) {
+            $monthStart = $month->startOfMonth()->toDateString();
+            $monthEnd = $month->endOfMonth()->toDateString();
+
+            // SMS data (including Quick-SMS and Phone-SMS)
+            $smsCount = DB::table('shulesoft.sms')
+                ->whereIn('schema_name', $this->schemaNames)
+                ->whereBetween('created_at', [$monthStart, $monthEnd])
+                ->whereIn('sent_from', ['quicksms', 'phone-sms'])
+                ->count();
+            $smsData[] = $smsCount;
+
+            // Email data
+            $emailCount = DB::table('shulesoft.sms')
+                ->whereIn('schema_name', $this->schemaNames)
+                ->whereBetween('created_at', [$monthStart, $monthEnd])
+                ->where('sent_from', 'email')
+                ->count();
+            $emailData[] = $emailCount;
+
+            // WhatsApp data
+            $whatsappCount = DB::table('shulesoft.sms')
+                ->whereIn('schema_name', $this->schemaNames)
+                ->whereBetween('created_at', [$monthStart, $monthEnd])
+                ->where('sent_from', 'whatsapp')
+                ->count();
+            $whatsappData[] = $whatsappCount;
+        }
+
+        return [
+            'labels' => $labels,
+            'datasets' => [
+                [
+                    'label' => 'SMS',
+                    'data' => $smsData,
+                    'borderColor' => 'rgb(75, 192, 192)',
+                    'backgroundColor' => 'rgba(75, 192, 192, 0.1)',
+                    'tension' => 0.1
+                ],
+                [
+                    'label' => 'Email',
+                    'data' => $emailData,
+                    'borderColor' => 'rgb(255, 99, 132)',
+                    'backgroundColor' => 'rgba(255, 99, 132, 0.1)',
+                    'tension' => 0.1
+                ],
+                [
+                    'label' => 'WhatsApp',
+                    'data' => $whatsappData,
+                    'borderColor' => 'rgb(54, 162, 235)',
+                    'backgroundColor' => 'rgba(54, 162, 235, 0.1)',
+                    'tension' => 0.1
+                ]
+            ]
+        ];
+    }
+
+    private function getCommunicationTrends()
+    {
+        return $this->getCommunicationTrendsByPeriod('6months');
     }
 }

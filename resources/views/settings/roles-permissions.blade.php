@@ -1,6 +1,7 @@
-@extends('layouts.admin')
+@extends('layouts.settings')
 
 @section('title', 'Roles & Permissions')
+@section('page-title', 'Roles & Permissions')
 
 @section('content')
 <div class="container-fluid">
@@ -14,9 +15,9 @@
                 <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addRoleModal">
                     <i class="bi bi-plus-circle"></i> Add Role
                 </button>
-                <button type="button" class="btn btn-outline-secondary" onclick="exportRoles()">
+                <!-- <button type="button" class="btn btn-outline-secondary" onclick="exportRoles()">
                     <i class="bi bi-download"></i> Export
-                </button>
+                </button> -->
             </div>
         </div>
     </div>
@@ -98,7 +99,7 @@
                                     <div class="mb-2">
                                         <i class="bi bi-key-fill text-success fa-2x"></i>
                                     </div>
-                                    <h5 class="mb-0">{{ $rolePermissions->where('role_id', $role->id)->count() }}</h5>
+                                    <h5 class="mb-0">{{ count(array_filter($rolePermissions, function($rp) use ($role) { return $rp->role_id == $role->id; })) }}</h5>
                                     <small class="text-muted">Permissions</small>
                                 </div>
                             </div>
@@ -110,11 +111,16 @@
                                 <small class="text-muted fw-bold">Key Permissions:</small>
                             </div>
                             <div class="permission-tags">
-                                @foreach($rolePermissions->where('role_id', $role->id)->take(3) as $rp)
+                                @php
+                                    $filteredPermissions = array_values(array_filter($rolePermissions, function($rp) use ($role) {
+                                        return $rp->role_id == $role->id;
+                                    }));
+                                @endphp
+                                @foreach(array_slice($filteredPermissions, 0, 3) as $rp)
                                 <span class="badge bg-secondary me-1 mb-1">{{ $rp->permission_name }}</span>
                                 @endforeach
-                                @if($rolePermissions->where('role_id', $role->id)->count() > 3)
-                                <span class="badge bg-light text-dark">+{{ $rolePermissions->where('role_id', $role->id)->count() - 3 }} more</span>
+                                @if(count($filteredPermissions) > 3)
+                                <span class="badge bg-light text-dark">+{{ count($filteredPermissions) - 3 }} more</span>
                                 @endif
                             </div>
                         </div>
@@ -172,7 +178,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($permissions->groupBy('module') as $module => $modulePermissions)
+                                @foreach(collect($permissions)->groupBy('module') as $module => $modulePermissions)
                                 <tr class="table-secondary">
                                     <td colspan="{{ count($roles) + 1 }}" class="fw-bold">
                                         <i class="bi bi-folder-fill me-2"></i>{{ ucfirst($module) }} Module
@@ -187,9 +193,9 @@
                                     @foreach($roles as $role)
                                     <td class="text-center">
                                         @php
-                                            $hasPermission = $rolePermissions->where('role_id', $role->id)
-                                                                           ->where('permission_id', $permission->id)
-                                                                           ->isNotEmpty();
+                                            $hasPermission = collect($rolePermissions)->where('role_id', $role->id)
+                                                                                   ->where('permission_id', $permission->id)
+                                                                                   ->isNotEmpty();
                                         @endphp
                                         <div class="form-check d-flex justify-content-center">
                                             <input class="form-check-input permission-checkbox" type="checkbox" 
@@ -280,16 +286,16 @@
                             <div class="mb-3">
                                 <div class="d-flex justify-content-between">
                                     <span>Active Users</span>
-                                    <span class="fw-bold">{{ $roles->sum('user_count') }}</span>
+                                    <span class="fw-bold">{{ array_sum(array_column($roles, 'user_count')) }}</span>
                                 </div>
                             </div>
                             <hr>
                             <div class="mb-3">
                                 <h6 class="text-muted">Most Privileged Roles</h6>
-                                @foreach($roles->sortByDesc(function($role) use ($rolePermissions) { return $rolePermissions->where('role_id', $role->id)->count(); })->take(3) as $role)
+                                @foreach(collect($roles)->sortByDesc(function($role) use ($rolePermissions) { return collect($rolePermissions)->where('role_id', $role->id)->count(); })->take(3) as $role)
                                 <div class="d-flex justify-content-between">
                                     <span>{{ $role->name }}</span>
-                                    <span class="badge bg-primary">{{ $rolePermissions->where('role_id', $role->id)->count() }}</span>
+                                    <span class="badge bg-primary">{{ collect($rolePermissions)->where('role_id', $role->id)->count() }}</span>
                                 </div>
                                 @endforeach
                             </div>
@@ -343,7 +349,7 @@
                     <div class="mb-3">
                         <label class="form-label">Assign Permissions</label>
                         <div class="permission-groups" style="max-height: 300px; overflow-y: auto;">
-                            @foreach($permissions->groupBy('module') as $module => $modulePermissions)
+                            @foreach(collect($permissions)->groupBy('module') as $module => $modulePermissions)
                             <div class="card mb-2">
                                 <div class="card-header py-2">
                                     <div class="form-check">

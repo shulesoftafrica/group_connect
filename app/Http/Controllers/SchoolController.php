@@ -15,7 +15,8 @@ class SchoolController extends Controller
     {
         $user = Auth::user();
         $schools = $user->schools()->get();
-        
+    
+
         return view('schools.index', compact('schools'));
     }
 
@@ -32,31 +33,34 @@ class SchoolController extends Controller
      */
     public function store(Request $request)
     {
+        // Validate that 'group_connect_code' is present and is a string
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'shulesoft_code' => 'nullable|string|max:50|unique:schools',
-            'location' => 'required|string|max:255',
-            'address' => 'nullable|string',
-            'contact_phone' => 'nullable|string|max:20',
-            'contact_email' => 'nullable|email|max:255',
-            'principal_name' => 'nullable|string|max:255',
-            'region' => 'nullable|string|max:100',
-            'school_type' => 'nullable|string|max:100',
+            'group_connect_code' => 'required|string',
         ]);
 
-        $school = School::create(array_merge($validated, [
-            'status' => 'active',
-            'total_students' => 0,
-            'fee_collection_percentage' => 0,
-            'academic_index' => 0,
-            'attendance_percentage' => 0,
-        ]));
+        // Check if the code exists in shulesoft.setting table
+        $setting = \DB::table('shulesoft.setting')
+            ->where('login_code', $validated['group_connect_code'])
+            ->first();
 
-        // Assign school to current user
-        Auth::user()->schools()->attach($school->id);
+        if (!$setting) {
+            return redirect()->back()
+            ->with('error', 'Invalid code supplied.');
+        }
+
+        // Record information in shulesoft.connect_schools
+        \DB::table('shulesoft.connect_schools')->insert([
+            'school_setting_uid' => $setting->uid,
+            'connect_organization_id' => Auth::user()->connect_organization_id,
+            'connect_user_id' => Auth::id(),
+            'is_active' => true,
+            'shulesoft_code' => $validated['group_connect_code'],
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
 
         return redirect()->route('schools.index')
-            ->with('success', 'School added successfully!');
+            ->with('success', 'School connected successfully!');
     }
 
     /**
@@ -88,6 +92,32 @@ class SchoolController extends Controller
      */
     public function destroy(string $id)
     {
-        //
+        // Validate the ID parameter
+
+    
+        // Verify the record exists and belongs to the authenticated user
+        $school = \DB::table('shulesoft.connect_schools')
+            ->where('id', $id)
+            ->where('connect_user_id', Auth::id())
+            ->first();
+
+        if (!$school) {
+            return redirect()->route('schools.index')
+            ->with('error', 'School not found or you do not have permission to disconnect it.');
+        }
+
+        // Delete the record
+        $deleted = \DB::table('shulesoft.connect_schools')
+            ->where('id', $id)
+            ->where('connect_user_id', Auth::id())
+            ->delete();
+
+        if ($deleted) {
+            return redirect()->route('schools.index')
+            ->with('success', 'School disconnected successfully!');
+        } else {
+            return redirect()->route('schools.index')
+            ->with('error', 'Failed to disconnect the school. Please try again.');
+        }
     }
 }

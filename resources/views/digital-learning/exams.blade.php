@@ -1,6 +1,7 @@
-@extends('layouts.admin')
+@extends('layouts.digital-learning')
 
 @section('title', 'AI Exams Management')
+@section('page-title', 'AI Exams')
 
 @section('content')
 <div class="container-fluid">
@@ -163,7 +164,7 @@
                             <td>
                                 <div>
                                     <h6 class="mb-1">{{ $exam['title'] }}</h6>
-                                    <small class="text-muted">{{ $exam['description'] }}</small>
+                                    <small class="text-muted">{{ $exam['description'] ?? '' }}</small>
                                     <div class="mt-1">
                                         <span class="badge bg-secondary">{{ $exam['questions_count'] }} Questions</span>
                                         <span class="badge bg-info">{{ $exam['total_marks'] }} Marks</span>

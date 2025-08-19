@@ -10,7 +10,7 @@
             <h1 class="h3 mb-0 text-gray-800">Human Resources Dashboard</h1>
             <p class="text-muted mb-0">Comprehensive HR management across all schools</p>
         </div>
-        <div class="d-flex gap-2">
+        <!-- <div class="d-flex gap-2">
             <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#hrActionsModal">
                 <i class="bi bi-lightning me-1"></i> Quick Actions
             </button>
@@ -29,7 +29,7 @@
                     <li><a class="dropdown-item" href="#">Bulk Operations</a></li>
                 </ul>
             </div>
-        </div>
+        </div> -->
     </div>
 
     <!-- KPI Cards Row -->
@@ -115,37 +115,86 @@
         </div>
     </div>
 
-    <!-- Secondary KPIs Row -->
+    <!-- New Database-Driven Metrics Row -->
     <div class="row g-3 mb-4">
         <div class="col-md-3">
-            <div class="card text-center shadow">
+            <div class="card text-center shadow border-left-success">
                 <div class="card-body">
-                    <div class="h4 text-primary">{{ $hrKPIs['staff_satisfaction'] }}%</div>
-                    <div class="text-muted">Staff Satisfaction</div>
+                    <div class="h4 text-success">{{ $staffMetrics['total_teachers'] ?? 0 }}</div>
+                    <div class="text-muted">
+                        <i class="fas fa-chalkboard-teacher me-1"></i>Total Teachers
+                    </div>
+                    <small class="text-xs text-muted">Active teaching staff</small>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card text-center shadow">
+            <div class="card text-center shadow border-left-info">
                 <div class="card-body">
-                    <div class="h4 text-success">{{ $hrKPIs['payroll_compliance'] }}%</div>
-                    <div class="text-muted">Payroll Compliance</div>
+                    <div class="h4 text-info">{{ $staffMetrics['non_teaching_staff'] ?? 0 }}</div>
+                    <div class="text-muted">
+                        <i class="fas fa-users-cog me-1"></i>Non-Teaching Staff
+                    </div>
+                    <small class="text-xs text-muted">Administrative & support</small>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card text-center shadow">
+            <div class="card text-center shadow border-left-warning">
                 <div class="card-body">
-                    <div class="h4 text-warning">{{ $hrKPIs['training_completion'] }}%</div>
-                    <div class="text-muted">Training Completion</div>
+                    <div class="h4 text-warning">{{ $staffMetrics['total_parents'] ?? 0 }}</div>
+                    <div class="text-muted">
+                        <i class="fas fa-user-friends me-1"></i>Total Parents
+                    </div>
+                    <small class="text-xs text-muted">Registered parents</small>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
+            <div class="card text-center shadow border-left-primary">
+                <div class="card-body">
+                    <div class="h4 text-primary">{{ $staffMetrics['total_sponsors'] ?? 0 }}</div>
+                    <div class="text-muted">
+                        <i class="fas fa-handshake me-1"></i>Total Sponsors
+                    </div>
+                    <small class="text-xs text-muted">Active sponsors</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Staff Performance KPI Row -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
             <div class="card text-center shadow">
                 <div class="card-body">
-                    <div class="h4 text-info">{{ $hrKPIs['pending_leave_requests'] }}</div>
-                    <div class="text-muted">Pending Leave Requests</div>
+                    <div class="h4 text-success">{{ $staffPerformance['avg_kpi_score'] ?? 0 }}%</div>
+                    <div class="text-muted">
+                        <i class="fas fa-chart-line me-1"></i>Avg KPI Score
+                    </div>
+                    <small class="text-xs text-muted">Overall staff performance</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center shadow">
+                <div class="card-body">
+                    <div class="h4 text-info">{{ $staffPerformance['kpi_completed'] ?? 0 }}</div>
+                    <div class="text-muted">
+                        <i class="fas fa-tasks me-1"></i>KPIs Completed
+                    </div>
+                    <small class="text-xs text-muted">This month</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-center shadow">
+                <div class="card-body">
+                    <div class="h4 text-warning">{{ $staffMetrics['inactive_staff'] ?? 0 }}</div>
+                    <div class="text-muted">
+                        <i class="fas fa-user-slash me-1"></i>Inactive Staff
+                    </div>
+                    <small class="text-xs text-muted">Currently inactive</small>
                 </div>
             </div>
         </div>
@@ -193,11 +242,11 @@
                                     <th><input type="checkbox" id="selectAllSchools"></th>
                                     <th>School</th>
                                     <th>Total Staff</th>
-                                    <th>Vacant Positions</th>
+                                    <!-- <th>Vacant Positions</th> -->
                                     <th>Turnover Rate</th>
                                     <th>Attendance</th>
                                     <th>Payroll Status</th>
-                                    <th>Actions</th>
+                                    <!-- <th>Actions</th> -->
                                 </tr>
                             </thead>
                             <tbody>
@@ -211,7 +260,7 @@
                                             </div>
                                             <div>
                                                 <div class="font-weight-bold">{{ $school['name'] }}</div>
-                                                <div class="text-xs text-muted">{{ $school['region'] }}</div>
+                                                <!-- <div class="text-xs text-muted">{{ $school['region'] }}</div> -->
                                             </div>
                                         </div>
                                     </td>
@@ -219,13 +268,13 @@
                                         <span class="font-weight-bold">{{ $school['total_staff'] }}</span>
                                         <div class="text-xs text-muted">{{ $school['active_staff'] }} active</div>
                                     </td>
-                                    <td>
+                                    <!-- <td>
                                         @if($school['vacant_positions'] > 0)
                                             <span class="badge bg-warning">{{ $school['vacant_positions'] }}</span>
                                         @else
                                             <span class="badge bg-success">0</span>
                                         @endif
-                                    </td>
+                                    </td> -->
                                     <td>
                                         <span class="text-{{ $school['turnover_rate'] > 12 ? 'danger' : ($school['turnover_rate'] > 8 ? 'warning' : 'success') }}">
                                             {{ $school['turnover_rate'] }}%
@@ -241,11 +290,35 @@
                                         </div>
                                     </td>
                                     <td>
-                                        <span class="badge bg-{{ $school['payroll_status'] === 'current' ? 'success' : 'warning' }}">
-                                            {{ ucfirst($school['payroll_status']) }}
+                                        @php
+                                            $payrollDate = $school['payroll_date'] ?? null;
+                                            $badgeClass = 'bg-danger';
+                                            $statusText = 'Never';
+                                            
+                                            if ($payrollDate) {
+                                                $payrollDateCarbon = \Carbon\Carbon::parse($payrollDate);
+                                                $now = \Carbon\Carbon::now();
+                                                
+                                                if ($payrollDateCarbon->isSameMonth($now)) {
+                                                    $badgeClass = 'bg-success';
+                                                    $statusText = 'Current';
+                                                } elseif ($payrollDateCarbon->isSameMonth($now->subMonth())) {
+                                                    $badgeClass = 'bg-warning';
+                                                    $statusText = 'Last Month';
+                                                } else {
+                                                    $badgeClass = 'bg-danger';
+                                                    $statusText = 'Overdue';
+                                                }
+                                            }
+                                        @endphp
+                                        <span class="badge {{ $badgeClass }}">
+                                            {{ $statusText }}
                                         </span>
+                                        @if($payrollDate)
+                                            <div class="text-xs text-muted">{{ \Carbon\Carbon::parse($payrollDate)->format('d/m/Y') }}</div>
+                                        @endif
                                     </td>
-                                    <td>
+                                    <!-- <td>
                                         <div class="btn-group" role="group">
                                             <a href="{{ route('hr.school', $school['id']) }}" class="btn btn-sm btn-outline-primary">
                                                 <i class="bi bi-eye"></i>
@@ -259,7 +332,7 @@
                                                 <li><a class="dropdown-item" href="#">HR Analytics</a></li>
                                             </ul>
                                         </div>
-                                    </td>
+                                    </td> -->
                                 </tr>
                                 @endforeach
                             </tbody>
@@ -292,7 +365,7 @@
         <!-- Right Column -->
         <div class="col-lg-4">
             <!-- HR Alerts -->
-            <div class="card shadow mb-4">
+            <!-- <div class="card shadow mb-4">
                 <div class="card-header py-3">
                     <h6 class="m-0 font-weight-bold text-danger">
                         <i class="bi bi-exclamation-triangle me-2"></i>HR Alerts
@@ -318,7 +391,7 @@
                         <a href="#" class="btn btn-outline-primary btn-sm">View All Alerts</a>
                     </div>
                 </div>
-            </div>
+            </div> -->
 
             <!-- Staff Distribution -->
             <div class="card shadow mb-4">
@@ -340,8 +413,35 @@
                 </div>
             </div>
 
+            <!-- Inactive Staff Analysis -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-user-slash me-2"></i>Inactive Staff Analysis
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <canvas id="inactiveStaffChart" width="100%" height="180"></canvas>
+                    <div class="mt-3">
+                        @if(isset($inactiveStaffData) && count($inactiveStaffData) > 0)
+                            @foreach($inactiveStaffData as $reason => $count)
+                            <div class="d-flex justify-content-between mb-2">
+                                <span class="text-sm">{{ ucfirst(str_replace('_', ' ', $reason)) }}:</span>
+                                <span class="font-weight-bold">{{ number_format($count) }}</span>
+                            </div>
+                            @endforeach
+                        @else
+                            <div class="text-center text-muted">
+                                <i class="fas fa-check-circle fa-2x mb-2"></i>
+                                <p>No inactive staff currently</p>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            </div>
+
             <!-- Quick Stats -->
-            <div class="card shadow">
+            <!-- <div class="card shadow">
                 <div class="card-header py-3">
                     <h6 class="m-0 font-weight-bold text-primary">
                         <i class="bi bi-speedometer2 me-2"></i>Quick Stats
@@ -378,7 +478,7 @@
                         </a>
                     </div>
                 </div>
-            </div>
+            </div> -->
         </div>
     </div>
 </div>
@@ -445,6 +545,7 @@
 @endsection
 
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 // HR Trends Chart
 const hrTrendsData = @json($performanceData);
@@ -559,6 +660,78 @@ const staffDistChart = new Chart(staffCtx, {
     }
 });
 
+// Inactive Staff Analysis Chart
+@if(isset($inactiveStaffData) && count($inactiveStaffData) > 0)
+const inactiveStaffData = @json($inactiveStaffData);
+const inactiveCtx = document.getElementById('inactiveStaffChart').getContext('2d');
+const inactiveStaffChart = new Chart(inactiveCtx, {
+    type: 'bar',
+    data: {
+        labels: Object.keys(inactiveStaffData).map(key => key.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())),
+        datasets: [{
+            label: 'Number of Staff',
+            data: Object.values(inactiveStaffData),
+            backgroundColor: [
+                '#e74a3b',
+                '#f39c12',
+                '#95a5a6',
+                '#34495e',
+                '#9b59b6'
+            ],
+            borderWidth: 2,
+            borderColor: '#fff'
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: false
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    stepSize: 1
+                }
+            }
+        }
+    }
+});
+@else
+// Show empty state for inactive staff chart
+const inactiveCtx = document.getElementById('inactiveStaffChart').getContext('2d');
+const inactiveStaffChart = new Chart(inactiveCtx, {
+    type: 'bar',
+    data: {
+        labels: ['No Data'],
+        datasets: [{
+            label: 'Number of Staff',
+            data: [0],
+            backgroundColor: ['#e9ecef'],
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: false
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                max: 5
+            }
+        }
+    }
+});
+@endif
+
 // Utility Functions
 function filterSchools(region) {
     // Implementation for filtering schools by region
@@ -651,6 +824,10 @@ document.getElementById('selectAllSchools').addEventListener('change', function(
 }
 
 #staffDistributionChart {
+    height: 200px !important;
+}
+
+#inactiveStaffChart {
     height: 200px !important;
 }
 

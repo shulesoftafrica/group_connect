@@ -7,6 +7,7 @@ use App\Http\Controllers\AcademicController;
 use App\Http\Controllers\OperationsController;
 use App\Http\Controllers\FinanceController;
 use App\Http\Controllers\HRController;
+use App\Http\Controllers\ReportsInsightsController;
 use App\Http\Controllers\CommunicationsController;
 use App\Http\Controllers\DigitalLearningController;
 use App\Http\Controllers\InsightsController;
@@ -58,8 +59,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/communications/messaging', [CommunicationsController::class, 'messaging'])->name('communications.messaging');
     Route::get('/communications/analytics', [CommunicationsController::class, 'analytics'])->name('communications.analytics');
     Route::get('/communications/feedback', [CommunicationsController::class, 'feedback'])->name('communications.feedback');
+    Route::get('/communications/trends-data', [CommunicationsController::class, 'getTrendsData'])->name('communications.trends-data');
     Route::post('/communications/send-message', [CommunicationsController::class, 'sendMessage'])->name('communications.send-message');
     Route::post('/communications/create-campaign', [CommunicationsController::class, 'createCampaign'])->name('communications.create-campaign');
+    
+    // Reports & Insights Dashboard
+    Route::get('/reports-insights', [ReportsInsightsController::class, 'index'])->name('reports.insights.index');
+    Route::post('/reports-insights/process', [ReportsInsightsController::class, 'processQuery'])->name('reports.insights.process');
+    Route::delete('/reports-insights/conversation', [ReportsInsightsController::class, 'clearConversation'])->name('reports.insights.clear-conversation');
     
     // Digital Learning Dashboard
     Route::get('/digital-learning', [DigitalLearningController::class, 'dashboard'])->name('digital-learning.index');
@@ -84,6 +91,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
     Route::get('/settings/users', [SettingsController::class, 'users'])->name('settings.users');
     Route::post('/settings/users', [SettingsController::class, 'storeUser'])->name('settings.users.store');
+    Route::get('/settings/users/{id}/edit', [SettingsController::class, 'editUser'])->name('settings.users.edit');
     Route::put('/settings/users/{id}', [SettingsController::class, 'updateUser'])->name('settings.users.update');
     Route::delete('/settings/users/{id}', [SettingsController::class, 'deleteUser'])->name('settings.users.delete');
     Route::get('/settings/schools', [SettingsController::class, 'schools'])->name('settings.schools');

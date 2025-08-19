@@ -1,6 +1,7 @@
-@extends('layouts.admin')
+@extends('layouts.settings')
 
 @section('title', 'Settings & Control Panel')
+@section('page-title', 'Dashboard')
 
 @section('content')
 <div class="container-fluid">
@@ -124,7 +125,7 @@
                 </div>
 
                 <!-- Academic Years -->
-                <div class="col-lg-3 col-md-6 mb-3">
+                <!-- <div class="col-lg-3 col-md-6 mb-3">
                     <div class="card h-100 shadow-sm hover-card">
                         <div class="card-body text-center">
                             <div class="mb-3">
@@ -137,7 +138,7 @@
                             </a>
                         </div>
                     </div>
-                </div>
+                </div> -->
 
                 <!-- Roles & Permissions -->
                 <div class="col-lg-3 col-md-6 mb-3">
@@ -156,7 +157,7 @@
                 </div>
 
                 <!-- System Configuration -->
-                <div class="col-lg-3 col-md-6 mb-3">
+                <!-- <div class="col-lg-3 col-md-6 mb-3">
                     <div class="card h-100 shadow-sm hover-card">
                         <div class="card-body text-center">
                             <div class="mb-3">
@@ -169,10 +170,10 @@
                             </a>
                         </div>
                     </div>
-                </div>
+                </div> -->
 
                 <!-- Bulk Operations -->
-                <div class="col-lg-3 col-md-6 mb-3">
+                <!-- <div class="col-lg-3 col-md-6 mb-3">
                     <div class="card h-100 shadow-sm hover-card">
                         <div class="card-body text-center">
                             <div class="mb-3">
@@ -185,10 +186,10 @@
                             </a>
                         </div>
                     </div>
-                </div>
+                </div> -->
 
                 <!-- Audit Logs -->
-                <div class="col-lg-3 col-md-6 mb-3">
+                <!-- <div class="col-lg-3 col-md-6 mb-3">
                     <div class="card h-100 shadow-sm hover-card">
                         <div class="card-body text-center">
                             <div class="mb-3">
@@ -201,10 +202,10 @@
                             </a>
                         </div>
                     </div>
-                </div>
+                </div> -->
 
                 <!-- Integration Settings -->
-                <div class="col-lg-3 col-md-6 mb-3">
+                <!-- <div class="col-lg-3 col-md-6 mb-3">
                     <div class="card h-100 shadow-sm hover-card">
                         <div class="card-body text-center">
                             <div class="mb-3">
@@ -212,97 +213,18 @@
                             </div>
                             <h5 class="card-title">Integration Settings</h5>
                             <p class="card-text text-muted">Manage API integrations and external connections</p>
-                            <a href="{{ route('settings.integrations') }}" class="btn btn-primary btn-sm">
+                            <a href="{{ url('settings.integrations') }}" class="btn btn-primary btn-sm">
                                 <i class="bi bi-arrow-right"></i> Manage APIs
                             </a>
                         </div>
                     </div>
-                </div>
+                </div> -->
             </div>
         </div>
     </div>
 
     <!-- Recent Activity -->
-    <div class="row">
-        <div class="col-lg-8">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="bi bi-clock-history me-2"></i>Recent System Activity
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <div class="timeline">
-                        @forelse($data['recent_activities'] as $activity)
-                        <div class="timeline-item">
-                            <div class="timeline-marker"></div>
-                            <div class="timeline-content">
-                                <h6 class="timeline-title">{{ $activity->action }}</h6>
-                                <p class="timeline-info">
-                                    <i class="bi bi-person-fill me-1"></i>{{ $activity->user_name ?? 'System' }}
-                                    <span class="ms-3">
-                                        <i class="bi bi-clock me-1"></i>{{ \Carbon\Carbon::parse($activity->created_at)->diffForHumans() }}
-                                    </span>
-                                </p>
-                            </div>
-                        </div>
-                        @empty
-                        <div class="text-center text-muted py-4">
-                            <i class="bi bi-inbox fa-3x mb-3"></i>
-                            <p>No recent activity found</p>
-                        </div>
-                        @endforelse
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-4">
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="bi bi-heart-pulse-fill me-2"></i>System Health
-                    </h6>
-                </div>
-                <div class="card-body">
-                    @foreach($data['system_status'] as $service => $status)
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <span class="text-capitalize">{{ str_replace('_', ' ', $service) }}</span>
-                        <span class="badge bg-{{ $status === 'healthy' ? 'success' : 'danger' }}">
-                            <i class="bi bi-{{ $status === 'healthy' ? 'check-circle' : 'x-circle' }} me-1"></i>
-                            {{ ucfirst($status) }}
-                        </span>
-                    </div>
-                    @endforeach
-                </div>
-            </div>
-
-            <!-- Quick Actions -->
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="bi bi-lightning-charge-fill me-2"></i>Quick Actions
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <div class="d-grid gap-2">
-                        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addUserModal">
-                            <i class="bi bi-person-plus-fill me-2"></i>Add New User
-                        </button>
-                        <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#linkSchoolModal">
-                            <i class="bi bi-building-add me-2"></i>Link School
-                        </button>
-                        <button class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#bulkMessageModal">
-                            <i class="bi bi-broadcast me-2"></i>Send Bulk Message
-                        </button>
-                        <button class="btn btn-warning btn-sm" onclick="downloadBackup()">
-                            <i class="bi bi-download me-2"></i>Download Backup
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+    
 </div>
 
 <!-- System Status Modal -->

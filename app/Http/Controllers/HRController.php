@@ -8,12 +8,30 @@ use App\Models\School;
 use App\Models\User;
 use App\Models\Organization;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 
 class HRController extends Controller
 {
+   
+
+    protected function initializeSchemaNames()
+    {
+        if (empty($this->schemaNames)) {
+            $user = Auth::user();
+            $dashboard = app()->make(\App\Http\Controllers\DashboardController::class);
+            $schools = $dashboard->getUserSchools($user);
+            $this->schemaNames = $dashboard->getSchemaNames($schools);
+        }
+    }
+
     public function index()
     {
+        $this->initializeSchemaNames();
+
         $hrKPIs = $this->calculateHRKPIs();
+        $staffMetrics = $this->getStaffMetrics();
+        $staffPerformance = $this->getStaffPerformance();
+        $inactiveStaffData = $this->getInactiveStaffData();
         $schoolsList = $this->getSchoolsHRList();
         $staffDirectory = $this->getStaffDirectoryData();
         $performanceData = $this->getHRPerformanceData();
@@ -24,6 +42,9 @@ class HRController extends Controller
         
         return view('hr.dashboard', compact(
             'hrKPIs',
+            'staffMetrics',
+            'staffPerformance',
+            'inactiveStaffData',
             'schoolsList',
             'staffDirectory',
             'performanceData',
@@ -36,6 +57,7 @@ class HRController extends Controller
 
     public function schoolDetail($id)
     {
+        $this->initializeSchemaNames();
         $school = School::with(['organization', 'user'])->findOrFail($id);
         
         $schoolHRData = $this->getSchoolHRData($school);
@@ -60,15 +82,19 @@ class HRController extends Controller
 
     public function staffDirectory()
     {
-        $schools = School::with('organization')->get();
-        $staffData = $this->getAllStaffData();
-        
+            $user = Auth::user();
+            $dashboard = app()->make(\App\Http\Controllers\DashboardController::class);
+            $schools = $dashboard->getUserSchools($user);
+            $this->schemaNames = $dashboard->getSchemaNames($schools);
+            $staffData = $this->getAllStaffData();
+
         return view('hr.staff-directory', compact('schools', 'staffData'));
     }
 
     public function recruitment()
     {
-        $schools = School::with('organization')->get();
+        $this->initializeSchemaNames();
+        $schools = School::with('organization')->get(); 
         $recruitmentData = $this->getRecruitmentManagementData();
         
         return view('hr.recruitment', compact('schools', 'recruitmentData'));
@@ -76,6 +102,7 @@ class HRController extends Controller
 
     public function leaveManagement()
     {
+        $this->initializeSchemaNames();
         $schools = School::with('organization')->get();
         $leaveData = $this->getLeaveManagementData();
         
@@ -84,6 +111,7 @@ class HRController extends Controller
 
     public function payrollManagement()
     {
+        $this->initializeSchemaNames();
         $schools = School::with('organization')->get();
         $payrollData = $this->getPayrollManagementData();
         
@@ -126,85 +154,341 @@ class HRController extends Controller
 
     private function calculateHRKPIs()
     {
-        // In real implementation, these would be calculated from actual database queries
+        // Calculate KPIs across all schemas
+        $totalStaff = DB::table('users')
+            ->whereIn('schema_name', $this->schemaNames)
+            ->whereIn('table', ['teacher', 'user'])
+            ->count();
+
+        $activeStaff = DB::table('users')
+            ->whereIn('schema_name', $this->schemaNames)
+            ->where('status', 1)
+           ->whereIn('table', ['teacher', 'user'])
+            ->count();
+
+        // Get pending leave requests
+        $pendingLeaveRequests = DB::table('staff_leave')
+            ->whereIn('schema_name', $this->schemaNames)
+            ->where('status', 1)
+            ->count();
+
+        // Monthly resignations
+        $monthlyResignations = DB::table('users')
+            ->whereIn('schema_name', $this->schemaNames)
+            ->where('status', '<>', 1)
+            ->where('updated_at', '>=', Carbon::now()->startOfMonth())
+            ->whereIn('usertype', ['teacher', 'staff', 'admin'])
+            ->count();
+
+        // Attendance data
+        $schemaAttendance = DB::table('tattendances')
+            ->whereIn('schema_name', $this->schemaNames)
+            ->selectRaw('SUM(CASE WHEN present = 1 THEN 1 ELSE 0 END)::float / COUNT(*) * 100 as attendance_percentage')
+            ->where('created_at', '>=', Carbon::now()->startOfMonth())
+            ->value('attendance_percentage');
+
+        $avgAttendance = $schemaAttendance ? round($schemaAttendance, 1) : 95.0;
+        $turnoverRate = $totalStaff > 0 ? ($monthlyResignations / $totalStaff) * 100 : 0;
+
         return [
-            'total_staff' => 1247,
-            'active_staff' => 1186,
-            'vacant_positions' => 23,
-            'turnover_rate' => 8.5,
-            'average_attendance' => 94.2,
-            'pending_leave_requests' => 34,
-            'staff_satisfaction' => 87.3,
-            'payroll_compliance' => 98.1,
-            'training_completion' => 76.8,
-            'recruitment_efficiency' => 82.4
+            'total_staff' => $totalStaff,
+            'active_staff' => $activeStaff,
+            'pending_leave_requests' => $pendingLeaveRequests,
+            'average_attendance' => $avgAttendance,
+            'turnover_rate' => round($turnoverRate, 1),
+            'vacant_positions'=>0
         ];
+    }
+
+    private function getStaffMetrics()
+    {
+        // Total Teachers - from teacher table
+        $totalTeachers = DB::table('teacher')
+            ->whereIn('schema_name', $this->schemaNames)
+            ->where('status', 1)
+            ->count();
+
+        // Non-teaching staff - from user table  
+        $nonTeachingStaff = DB::table('user')
+            ->whereIn('schema_name', $this->schemaNames)
+            ->where('status', 1)
+            ->count();
+
+        // Total Parents - from parent table
+        $totalParents = DB::table('parent')
+            ->whereIn('schema_name', $this->schemaNames)
+            ->where('status', 1)
+            ->count();
+
+        // Total Sponsors - from sponsors table through student_sponsors
+        $totalSponsors = DB::table('sponsors')
+            ->join('student_sponsors', 'student_sponsors.sponsor_id', '=', 'sponsors.id')
+            ->whereIn('sponsors.schema_name', $this->schemaNames)
+            ->where('student_sponsors.status', 1)
+            ->distinct('sponsors.id')
+            ->count();
+
+        // Inactive staff from users table
+        $inactiveStaff = DB::table('users')
+            ->whereIn('schema_name', $this->schemaNames)
+            ->where('status', '<>', 1)
+            ->whereIn('table', ['teacher', 'user'])
+            ->count();
+
+        return [
+            'total_teachers' => $totalTeachers,
+            'non_teaching_staff' => $nonTeachingStaff,
+            'total_parents' => $totalParents,
+            'total_sponsors' => $totalSponsors,
+            'inactive_staff' => $inactiveStaff,
+        ];
+    }
+
+    private function getStaffPerformance()
+    {
+        // Get staff performance from staff_targets table
+        $avgKpiScore = DB::table('staff_targets')
+            ->whereIn('schema_name', $this->schemaNames)
+            ->where('created_at', '>=', Carbon::now()->startOfMonth())
+            ->avg('value') ?? 0;
+
+        $kpiCompleted = DB::table('staff_targets_reports')
+            ->whereIn('schema_name', $this->schemaNames)
+            ->where('created_at', '>=', Carbon::now()->startOfMonth())
+            ->where('is_approved', 1)
+            ->count();
+
+        return [
+            'avg_kpi_score' => round($avgKpiScore, 1),
+            'kpi_completed' => $kpiCompleted,
+        ];
+    }
+
+    private function getInactiveStaffData()
+    {
+        // Get inactive staff breakdown by reason
+        $inactiveReasons = DB::table('users')
+            ->join('constant.user_status', 'users.status_id', '=', 'constant.user_status.id')
+            ->select('constant.user_status.reason as reason', DB::raw('count(*) as count'))
+            ->whereIn('users.schema_name', $this->schemaNames)
+            ->where('users.status', '<>', 1)
+            ->whereIn('users.table', ['teacher', 'user'])
+            ->groupBy('constant.user_status.reason')
+            ->pluck('count', 'reason')
+            ->toArray();
+
+        return $inactiveReasons;
     }
 
     private function getSchoolsHRList()
     {
-        $schools = School::with('organization')->get();
+        $user = Auth::user();
+        $dashboard = app()->make(\App\Http\Controllers\DashboardController::class);
+        $schools = $dashboard->getUserSchools($user);
         
         return $schools->map(function ($school) {
+            // Get actual staff count for this school
+            $setting=$school->schoolSetting;
+            $totalStaff = DB::table('users')
+                ->where('schema_name', $school->schoolSetting->schema_name)
+                ->whereIn('table', ['teacher', 'user'])
+                ->count();
+
+            $activeStaff = DB::table('users')
+                ->where('schema_name', $school->schoolSetting->schema_name)
+                ->where('status', 1)
+                ->whereIn('table', ['teacher', 'user'])
+                ->count();
+
+      
+           
+            
+        $attendanceRate = DB::table('tattendances')
+              ->where('schema_name', $school->schoolSetting->schema_name)
+            ->selectRaw('SUM(CASE WHEN present = 1 THEN 1 ELSE 0 END)::float / COUNT(*) * 100 as attendance_percentage')
+            ->where('created_at', '>=', Carbon::now()->startOfMonth())
+            ->value('attendance_percentage');
+
+
+            // Calculate turnover rate
+            $monthlyResignations = DB::table('users')
+                 ->where('schema_name', $school->schoolSetting->schema_name)
+                ->where('status', '<>', 1)
+                ->where('updated_at', '>=', Carbon::now()->startOfMonth())
+                ->count();
+            
+            $turnoverRate = $totalStaff > 0 ? ($monthlyResignations / $totalStaff) * 100 : 0;
+
+            // Get payroll status (simplified - you may have a specific payroll table)
+            // Get last payroll date from salaries table
+            $payrollStatus = DB::table('shulesoft.salaries')
+                ->where('schema_name', $school->schoolSetting->schema_name)
+                ->max('created_at');
+
             return [
                 'id' => $school->id,
-                'name' => $school->settings['school_name'] ?? 'Unknown School',
+                'name' => ucfirst($setting->schema_name)?? 'Unknown School',
                 'code' => $school->shulesoft_code,
                 'region' => $school->settings['region'] ?? 'Unknown',
-                'total_staff' => rand(15, 85),
-                'active_staff' => rand(12, 80),
-                'vacant_positions' => rand(0, 8),
-                'turnover_rate' => round(rand(5, 15) + (rand(0, 9) / 10), 1),
-                'attendance_rate' => round(rand(85, 98) + (rand(0, 9) / 10), 1),
-                'payroll_status' => rand(0, 1) ? 'current' : 'pending',
-                'compliance_score' => rand(75, 100),
-                'last_updated' => Carbon::now()->subDays(rand(0, 7))->format('Y-m-d H:i:s')
+                'total_staff' => $totalStaff,
+                'active_staff' => $activeStaff,
+                'vacant_positions' => max(0, $totalStaff - $activeStaff),
+                'turnover_rate' => round($turnoverRate, 1),
+                'attendance_rate' => round($attendanceRate, 1),
+                'payroll_status' => $payrollStatus,
+                'compliance_score' => 95, // This would come from compliance calculations
+                'last_updated' => Carbon::now()->format('Y-m-d H:i:s')
             ];
         });
     }
 
     private function getStaffDirectoryData()
     {
+        // Get total staff count
+        $totalCount = DB::table('users')
+         ->whereIn('users.schema_name', $this->schemaNames)
+            ->whereIn('table', ['teacher', 'user'])
+            ->count();
+
+        // Get staff by role
+        $byRole = [
+            'Teachers' => DB::table('users')
+                ->where('table', 'teacher')
+                 ->whereIn('users.schema_name', $this->schemaNames)
+                ->count(),
+            'Support Staff' => DB::table('users')
+             ->whereIn('users.schema_name', $this->schemaNames)
+                ->whereIn('table', ['user'])
+                ->count(),
+            'Administration' => DB::table('users')
+             ->whereIn('users.schema_name', $this->schemaNames)
+                ->whereRaw('LOWER(usertype) = ?', ['admin'])
+                ->count(),
+        ];
+
+        // Get staff by region (based on school location)
+        $byRegion = DB::table('users')
+         ->whereIn('users.schema_name', $this->schemaNames)
+            ->select('country_id', DB::raw('count(*) as count'))
+            ->whereIn('users.table', ['teacher', 'user'])
+              ->groupBy('country_id')
+            ->pluck('count', 'country_id')
+            ->toArray();
+
+        // Get staff by status
+        $byStatus = DB::table('users')
+         ->whereIn('users.schema_name', $this->schemaNames)
+            ->whereIn('table', ['teacher', 'user'])
+            ->select('status', DB::raw('count(*) as count'))
+            ->groupBy('status')
+            ->pluck('count', 'status')
+            ->toArray();
+
+        // Format status labels
+        $formattedByStatus = [];
+        foreach ($byStatus as $status => $count) {
+            $formattedByStatus[ucfirst($status)] = $count;
+        }
+
+        // Get staff on leave
+        $onLeave = DB::table('staff_leave')
+            ->whereIn('schema_name', $this->schemaNames)
+            ->where('status', 1)
+            ->where('start_date', '<=', Carbon::now())
+            ->where('end_date', '>=', Carbon::now())
+            ->count();
+
+        $formattedByStatus['On Leave'] = $onLeave;
+
         return [
-            'total_count' => 1247,
-            'by_role' => [
-                'Teachers' => 856,
-                'Support Staff' => 234,
-                'Administration' => 89,
-                'Management' => 68
-            ],
-            'by_region' => [
-                'Dar es Salaam' => 421,
-                'Mwanza' => 298,
-                'Arusha' => 245,
-                'Dodoma' => 187,
-                'Mbeya' => 96
-            ],
-            'by_status' => [
-                'Active' => 1186,
-                'On Leave' => 34,
-                'Suspended' => 12,
-                'Probation' => 15
-            ]
+            'total_count' => $totalCount,
+            'by_role' => $byRole,
+            'by_region' => $byRegion,
+            'by_status' => $formattedByStatus
         ];
     }
 
     private function getHRPerformanceData()
     {
+        // Get monthly trends for the last 6 months
+        $months = [];
+        $staffCounts = [];
+        $turnoverData = [];
+        $newHires = [];
+        $attendanceData = [];
+
+        for ($i = 5; $i >= 0; $i--) {
+            $month = Carbon::now()->subMonths($i);
+            $months[] = $month->format('M');
+
+            // Staff count at end of month
+            $staffCount = DB::table('users')
+                ->whereIn('table', ['teacher', 'user'])
+                ->where('created_at', '<=', $month->endOfMonth())
+                ->count();
+            $staffCounts[] = $staffCount;
+
+            // Turnover (resignations) in that month
+            $turnover = DB::table('users')
+                ->where('status', 1)
+                ->whereIn('table', ['teacher', 'user'])
+                ->whereBetween('updated_at', [$month->startOfMonth(), $month->endOfMonth()])
+                ->count();
+            $turnoverData[] = $turnover;
+
+            // New hires in that month
+            $hires = DB::table('users')
+                ->whereIn('table', ['teacher', 'user'])
+                ->whereBetween('created_at', [$month->startOfMonth(), $month->endOfMonth()])
+                ->count();
+            $newHires[] = $hires;
+
+            // Average attendance for that month
+
+            $attendanceRate = DB::table('tattendances')
+              ->whereIn('schema_name', $this->schemaNames)
+            ->selectRaw('SUM(CASE WHEN present = 1 THEN 1 ELSE 0 END)::float / COUNT(*) * 100 as attendance_percentage')
+           ->whereBetween('created_at', [$month->startOfMonth(), $month->endOfMonth()])
+            ->value('attendance_percentage');
+
+
+        }
+
+        // Get performance distribution from staff_targets
+        $performanceDistribution = DB::table('staff_targets')
+            ->whereIn('schema_name', $this->schemaNames)
+            ->where('created_at', '>=', Carbon::now()->startOfMonth())
+            ->select(
+                DB::raw("CASE 
+                    WHEN value >= 90 THEN 'Excellent'
+                    WHEN value >= 80 THEN 'Good'
+                    WHEN value >= 70 THEN 'Satisfactory'
+                    ELSE 'Needs Improvement'
+                END as performance_level"),
+                DB::raw('count(*) as count')
+            )
+            ->groupBy('performance_level')
+            ->pluck('count', 'performance_level')
+            ->toArray();
+
+        // Ensure all performance levels are present
+        $defaultPerformance = [
+            'Excellent' => 0,
+            'Good' => 0,
+            'Satisfactory' => 0,
+            'Needs Improvement' => 0
+        ];
+        $performanceDistribution = array_merge($defaultPerformance, $performanceDistribution);
+
         return [
             'monthly_trends' => [
-                'labels' => ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-                'staff_count' => [1205, 1218, 1235, 1242, 1250, 1247],
-                'turnover' => [12, 8, 15, 7, 11, 9],
-                'new_hires' => [25, 18, 32, 14, 19, 17],
-                'attendance' => [92.1, 93.8, 94.5, 93.2, 94.8, 94.2]
+                'labels' => $months,
+                'staff_count' => $staffCounts,
+                'turnover' => $turnoverData,
+                'new_hires' => $newHires,
+                'attendance' => $attendanceData
             ],
-            'performance_distribution' => [
-                'Excellent' => 312,
-                'Good' => 658,
-                'Satisfactory' => 234,
-                'Needs Improvement' => 43
-            ]
+            'performance_distribution' => $performanceDistribution
         ];
     }
 
@@ -248,37 +532,111 @@ class HRController extends Controller
 
     private function getAttendanceData()
     {
+        // Overall attendance from staff_report table
+
+        
+            $overallAttendance = DB::table('tattendances')
+              ->whereIn('schema_name', $this->schemaNames)
+            ->selectRaw('SUM(CASE WHEN present = 1 THEN 1 ELSE 0 END)::float / COUNT(*) * 100 as attendance_percentage')
+             ->where('created_at', '>=', Carbon::now()->startOfMonth())
+            ->value('attendance_percentage');
+
+        // Attendance by category - simplified since we can't easily join across schemas
+        $attendanceByCategory = [
+            'Teachers' => 94.5,
+            'Support Staff' => 93.2,
+            'Administration' => 96.8,
+        ];
+
+        // Weekly trends for current month
+        $weeklyTrends = [];
+        $weeklyLabels = [];
+        
+        for ($week = 1; $week <= 4; $week++) {
+            $weekStart = Carbon::now()->startOfMonth()->addWeeks($week - 1);
+            $weekEnd = $weekStart->copy()->addWeek();
+            
+            $weeklyLabels[] = "Week $week";
+
+            $weeklyTrends[] = DB::table('tattendances')
+            ->selectRaw('SUM(CASE WHEN present = 1 THEN 1 ELSE 0 END)::float / COUNT(*) * 100 as attendance_percentage')
+                  ->whereIn('schema_name', $this->schemaNames)
+                ->whereBetween('created_at', [$weekStart, $weekEnd])
+            ->value('attendance_percentage');
+        }
+
+        // Absenteeism reasons from staff_leave table
+        $absenteeismReasons = DB::table('staff_leave')
+            ->join('constant.leave_reasons', 'staff_leave.leave_type_id', '=', 'constant.leave_reasons.id')
+            ->whereIn('staff_leave.schema_name', $this->schemaNames)
+            ->where('staff_leave.status', 1)
+            ->where('staff_leave.start_date', '>=', Carbon::now()->startOfMonth())
+            ->select('constant.leave_reasons.reason_name as reason', DB::raw('count(*) as count'))
+            ->groupBy('constant.leave_reasons.reason_name')
+            ->pluck('count', 'reason')
+            ->toArray();
+
+        // Format reasons with default values
+        $formattedReasons = [
+            'Sick Leave' => $absenteeismReasons['sick'] ?? 0,
+            'Personal' => $absenteeismReasons['personal'] ?? 0,
+            'Training' => $absenteeismReasons['training'] ?? 0,
+            'Emergency' => $absenteeismReasons['emergency'] ?? 0,
+            'Other' => $absenteeismReasons['other'] ?? 0,
+        ];
+
         return [
-            'overall_attendance' => 94.2,
-            'by_category' => [
-                'Teachers' => 95.1,
-                'Support Staff' => 93.8,
-                'Administration' => 96.2,
-                'Management' => 97.5
-            ],
+            'overall_attendance' => round($overallAttendance, 1),
+            'by_category' => $attendanceByCategory,
             'trends' => [
-                'labels' => ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
-                'values' => [93.8, 94.5, 94.1, 94.6]
+                'labels' => $weeklyLabels,
+                'values' => $weeklyTrends
             ],
-            'absenteeism_reasons' => [
-                'Sick Leave' => 45,
-                'Personal' => 23,
-                'Training' => 18,
-                'Emergency' => 12,
-                'Other' => 8
-            ]
+            'absenteeism_reasons' => $formattedReasons
         ];
     }
 
     private function getPayrollSummaryData()
     {
+        // Since payroll data may not be directly available, provide basic structure
+        // In a real implementation, this would come from a payroll system
+        
+        $totalStaff = DB::table('users')
+            ->whereIn('schema_name', $this->schemaNames)
+            ->whereIn('table', ['teacher', 'user'])
+            ->where('status',1)
+            ->count();
+
+        // Estimated payroll based on staff count and category
+        $teacherCount = DB::table('users')
+            ->whereIn('schema_name', $this->schemaNames)
+            ->whereIn('table', ['teacher'])
+            ->where('status',1)
+            ->count();
+
+        $staffCount = DB::table('users')
+            ->whereIn('schema_name', $this->schemaNames)
+            ->whereIn('table', ['user', 'teacher'])
+            ->where('status', 1)
+            ->count();
+
+        $adminCount = DB::table('users')
+            ->whereIn('schema_name', $this->schemaNames)
+            ->where('usertype', 'admin')
+            ->where('status',1)
+            ->count();
+
+        // Estimated monthly payroll (these would come from actual payroll data)
+        $teacherPayroll = $teacherCount * 800000; // Average teacher salary
+        $staffPayroll = $staffCount * 600000; // Average staff salary
+        $adminPayroll = $adminCount * 1200000; // Average admin salary
+
         return [
-            'total_monthly_payroll' => 45675000,
+            'total_monthly_payroll' => $teacherPayroll + $staffPayroll + $adminPayroll,
             'by_category' => [
-                'Teachers' => 32450000,
-                'Support Staff' => 8920000,
-                'Administration' => 3105000,
-                'Management' => 1200000
+                'Teachers' => $teacherPayroll,
+                'Support Staff' => $staffPayroll,
+                'Administration' => $adminPayroll,
             ],
             'compliance_status' => [
                 'current' => 98.1,
@@ -293,23 +651,44 @@ class HRController extends Controller
 
     private function getRecruitmentData()
     {
+        // Get actual vacant positions (inactive staff or positions without staff)
+        $openPositions = DB::table('users')
+            ->whereIn('schema_name', $this->schemaNames)
+            ->where('status', '<>',1)
+            ->whereIn('table', ['teacher', 'user'])
+            ->count();
+
+        // Since recruitment data may not be tracked in the current schema,
+        // provide basic structure that could be enhanced with a recruitment module
+        
         return [
-            'open_positions' => 23,
-            'applications_received' => 145,
-            'interviews_scheduled' => 67,
-            'offers_made' => 18,
-            'positions_filled' => 12,
+            'open_positions' => $openPositions,
+            'applications_received' => 0, // Would come from recruitment system
+            'interviews_scheduled' => 0,
+            'offers_made' => 0,
+            'positions_filled' => 0,
             'by_category' => [
-                'Teachers' => 15,
-                'Support Staff' => 5,
-                'Administration' => 2,
-                'Management' => 1
+                'Teachers' => DB::table('users')
+                    ->whereIn('schema_name', $this->schemaNames)
+                    ->where('table', 'teacher')
+                    ->where('status', 1)
+                    ->count(),
+                'Support Staff' => DB::table('users')
+                    ->whereIn('schema_name', $this->schemaNames)
+                    ->whereIn('table', ['user'])
+                    ->where('status', 1)
+                    ->count(),
+                'Administration' => DB::table('users')
+                    ->whereIn('schema_name', $this->schemaNames)
+                    ->where('usertype', 'admin')
+                    ->where('status', 1)
+                    ->count(),
             ],
             'recruitment_pipeline' => [
-                'Application Review' => 78,
-                'Initial Interview' => 34,
-                'Technical Assessment' => 21,
-                'Final Interview' => 12
+                'Application Review' => 0,
+                'Initial Interview' => 0,
+                'Technical Assessment' => 0,
+                'Final Interview' => 0
             ]
         ];
     }
@@ -430,27 +809,25 @@ class HRController extends Controller
     private function getAllStaffData()
     {
         // Sample staff data - in real implementation, this would query the database
-        $sampleStaff = [];
-        $schools = School::with('organization')->take(5)->get();
-        
-        foreach ($schools as $school) {
-            for ($i = 1; $i <= rand(15, 30); $i++) {
-                $sampleStaff[] = [
-                    'id' => $school->id . sprintf('%03d', $i),
-                    'name' => 'Staff Member ' . $i,
-                    'email' => 'staff' . $i . '@' . strtolower(str_replace(' ', '', $school->settings['school_name'] ?? 'school')) . '.com',
-                    'role' => ['Teacher', 'Support Staff', 'Administration', 'Management'][rand(0, 3)],
-                    'school' => $school->settings['school_name'] ?? 'Unknown School',
-                    'school_id' => $school->id,
-                    'status' => ['Active', 'On Leave', 'Probation'][rand(0, 2)],
-                    'hire_date' => Carbon::now()->subDays(rand(30, 1000))->format('Y-m-d'),
-                    'contact' => '+255' . rand(700000000, 799999999),
-                    'department' => ['Academic', 'Administration', 'Support', 'Management'][rand(0, 3)]
-                ];
-            }
-        }
-        
-        return collect($sampleStaff);
+        return DB::table('shulesoft.users')
+            ->whereIn('schema_name', $this->schemaNames)
+            ->whereIn('table', ['teacher', 'user'])
+            ->get()
+            ->map(function ($user) {
+            
+            return [
+            'id' => $user->id,
+            'name' => $user->name ?? 'Unknown',
+            'email' => $user->email ?? 'No email',
+            'role' => ucfirst($user->table ?? 'Staff'),
+            'school' => $user->schema_name ?? 'Unknown School',
+            'school_id' => null,
+            'status' => $user->status == 1 ? 'Active' : 'Inactive',
+            'hire_date' => $user->created_at ? Carbon::parse($user->created_at)->format('Y-m-d') : null,
+            'contact' => $user->phone ?? 'No contact',
+            'department' => ucfirst($user->usertype ?? 'General')
+            ];
+            });
     }
 
     private function getRecruitmentManagementData()

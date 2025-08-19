@@ -1,6 +1,7 @@
-@extends('layouts.admin')
+@extends('layouts.settings')
 
 @section('title', 'User Management')
+@section('page-title', 'User Management')
 
 @section('content')
 <div class="container-fluid">
@@ -14,9 +15,9 @@
                 <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
                     <i class="bi bi-person-plus-fill"></i> Add New User
                 </button>
-                <button type="button" class="btn btn-outline-secondary" onclick="exportUsers()">
+                <!-- <button type="button" class="btn btn-outline-secondary" onclick="exportUsers()">
                     <i class="bi bi-download"></i> Export
-                </button>
+                </button> -->
             </div>
         </div>
     </div>
@@ -119,7 +120,7 @@
                                     </td>
                                     <td>
                                         <span class="text-muted small">
-                                            {{ $user->last_login ? \Carbon\Carbon::parse($user->last_login)->diffForHumans() : 'Never' }}
+                                            {{ isset($user->last_login) && $user->last_login ? \Carbon\Carbon::parse($user->last_login)->diffForHumans() : 'Never' }}
                                         </span>
                                     </td>
                                     <td>
@@ -212,7 +213,7 @@
                         <label for="assigned_schools" class="form-label">Assign Schools</label>
                         <select class="form-select" id="assigned_schools" name="assigned_schools[]" multiple>
                             @foreach($schools as $school)
-                            <option value="{{ $school->uid }}">{{ $school->name }} ({{ $school->school_code }})</option>
+                            <option value="{{ $school->school_setting_uid }}">({{ $school->schoolSetting->sname }})</option>
                             @endforeach
                         </select>
                         <div class="form-text">Hold Ctrl/Cmd to select multiple schools</div>

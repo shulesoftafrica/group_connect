@@ -1,4 +1,7 @@
-@extends('layouts.admin')
+@extends('layouts.settings')
+
+@section('title', 'Academic Years Management')
+@section('page-title', 'Academic Years')tends('layouts.admin')
 
 @section('title', 'Academic Year Management')
 
@@ -77,7 +80,7 @@
                         <div class="col-md-4">
                             <select class="form-select" id="schoolFilter">
                                 <option value="">All Schools</option>
-                                @foreach($academicYears->groupBy('school_name') as $schoolName => $years)
+                                @foreach(collect($academicYears)->groupBy('school_name') as $schoolName => $years)
                                 <option value="{{ $schoolName }}">{{ $schoolName }}</option>
                                 @endforeach
                             </select>
@@ -85,7 +88,7 @@
                         <div class="col-md-4">
                             <select class="form-select" id="yearFilter">
                                 <option value="">All Years</option>
-                                @foreach($academicYears->groupBy('year_name') as $yearName => $years)
+                                @foreach(collect($academicYears)->groupBy('year_name') as $yearName => $years)
                                 <option value="{{ $yearName }}">{{ $yearName }}</option>
                                 @endforeach
                             </select>
@@ -267,7 +270,7 @@
                     <div id="schoolSelectionDiv" class="mb-3" style="display: none;">
                         <label class="form-label">Select Schools</label>
                         <div class="border rounded p-3" style="max-height: 200px; overflow-y: auto;">
-                            @foreach($academicYears->groupBy('school_name') as $schoolName => $years)
+                            @foreach(collect($academicYears)->groupBy('school_name') as $schoolName => $years)
                             <div class="form-check">
                                 <input class="form-check-input" type="checkbox" name="schools[]" 
                                        value="{{ $years->first()->uid }}" id="school_{{ $years->first()->uid }}">

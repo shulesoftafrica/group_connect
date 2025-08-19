@@ -1,6 +1,7 @@
-@extends('layouts.admin')
+@extends('layouts.settings')
 
 @section('title', 'School Management')
+@section('page-title', 'School Management')
 
 @section('content')
 <div class="container-fluid">
@@ -14,9 +15,9 @@
                 <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addSchoolModal">
                     <i class="bi bi-building-add"></i> Add School
                 </button>
-                <button type="button" class="btn btn-outline-secondary" onclick="exportSchools()">
+                <!-- <button type="button" class="btn btn-outline-secondary" onclick="exportSchools()">
                     <i class="bi bi-download"></i> Export
-                </button>
+                </button> -->
             </div>
         </div>
     </div>
@@ -101,7 +102,7 @@
             <div class="card school-card h-100 shadow hover-card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h6 class="mb-0 font-weight-bold text-primary">
-                        <i class="bi bi-building me-2"></i>{{ $school->name }}
+                        <i class="bi bi-building me-2"></i>{{ $school->sname ?? 'Unnamed School' }}
                     </h6>
                     <div class="dropdown">
                         <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" 
@@ -109,17 +110,17 @@
                             <i class="bi bi-three-dots-vertical"></i>
                         </button>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="#" onclick="viewSchoolDetails({{ $school->uid }})">
+                            <li><a class="dropdown-item" href="#" onclick="viewSchoolDetails({{ $school->id }})">
                                 <i class="bi bi-eye me-2"></i>View Details
                             </a></li>
-                            <li><a class="dropdown-item" href="#" onclick="editSchool({{ $school->uid }})">
+                            <li><a class="dropdown-item" href="#" onclick="editSchool({{ $school->id }})">
                                 <i class="bi bi-pencil me-2"></i>Edit
                             </a></li>
-                            <li><a class="dropdown-item" href="#" onclick="manageUsers({{ $school->uid }})">
+                            <li><a class="dropdown-item" href="#" onclick="manageUsers({{ $school->id }})">
                                 <i class="bi bi-people me-2"></i>Manage Users
                             </a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item text-danger" href="#" onclick="unlinkSchool({{ $school->uid }})">
+                            <li><a class="dropdown-item text-danger" href="#" onclick="unlinkSchool({{ $school->id }})">
                                 <i class="bi bi-unlink me-2"></i>Unlink School
                             </a></li>
                         </ul>
@@ -153,17 +154,17 @@
                     <hr>
 
                     <div class="d-flex justify-content-between align-items-center">
-                        <span class="badge bg-secondary">{{ $school->username }}</span>
+                        <span class="badge bg-secondary">{{ $school->assigned_users }}</span>
                         <div class="btn-group btn-group-sm" role="group">
-                            <a href="#" class="btn btn-outline-primary" onclick="viewDashboard({{ $school->uid }})" 
+                            <a href="#" class="btn btn-outline-primary" onclick="viewDashboard({{ $school->id }})" 
                                data-bs-toggle="tooltip" title="View Dashboard">
                                 <i class="bi bi-graph-up"></i>
                             </a>
-                            <a href="#" class="btn btn-outline-success" onclick="viewFinance({{ $school->uid }})"
+                            <a href="#" class="btn btn-outline-success" onclick="viewFinance({{ $school->id }})"
                                data-bs-toggle="tooltip" title="View Finance">
                                 <i class="bi bi-calculator"></i>
                             </a>
-                            <a href="#" class="btn btn-outline-info" onclick="viewSettings({{ $school->uid }})"
+                            <a href="#" class="btn btn-outline-info" onclick="viewSettings({{ $school->id }})"
                                data-bs-toggle="tooltip" title="Settings">
                                 <i class="bi bi-gear"></i>
                             </a>

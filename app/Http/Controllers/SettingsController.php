@@ -23,7 +23,7 @@ class SettingsController extends Controller
             'total_schools' => $this->getTotalSchools(),
             'active_sessions' => $this->getActiveSessions(),
             'pending_approvals' => $this->getPendingApprovals(),
-            'recent_activities' => $this->getRecentActivities(),
+            
             'system_status' => $this->getSystemStatus(),
         ];
 
@@ -68,26 +68,22 @@ class SettingsController extends Controller
 
     /**
      * User Management
+     * 
+     * strongly to be checked its logic
      */
     public function users()
     {
         $users = DB::select("
-            SELECT u.*, org.name as organization_name,
-                   (SELECT GROUP_CONCAT(DISTINCT sch.name SEPARATOR ', ') 
-                    FROM shulesoft.user sch 
-                    WHERE FIND_IN_SET(sch.uid, u.assigned_schools)) as assigned_school_names
+            SELECT u.*,
+                   (SELECT STRING_AGG(DISTINCT sch.name, ', ')
+                    FROM shulesoft.user sch
+                    WHERE ',' || u.name || ',' LIKE '%,' || sch.uid || ',%') as assigned_school_names
             FROM shulesoft.connect_users u
-            LEFT JOIN shulesoft.connect_organizations org ON u.organization_id = org.id
             ORDER BY u.created_at DESC
         ");
 
-        $schools = DB::select("
-            SELECT uid, name, username as school_code 
-            FROM shulesoft.user 
-            WHERE user_type = 'school'
-            ORDER BY name
-        ");
-
+         $user = Auth::user();
+        $schools =$user->schools()->active()->get();
         $roles = DB::select("SELECT * FROM shulesoft.connect_roles ORDER BY name");
 
         return view('settings.users', compact('users', 'schools', 'roles'));
@@ -95,28 +91,98 @@ class SettingsController extends Controller
 
     public function storeUser(Request $request)
     {
-        $request->validate([
+      $valid =  $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:shulesoft.connect_users',
-            'role_id' => 'required|exists:shulesoft.connect_roles,id',
+            'email' => 'required|email|unique:connect_users',
+            'role_id' => 'required|exists:connect_roles,id',
             'assigned_schools' => 'array'
         ]);
+        
+        $pass = substr(str_shuffle('23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz'), 0, 8);
+        $defaultPassword = Hash::make($pass); // Replace with the actual default password logic if needed
 
-        $userId = DB::insert("
-            INSERT INTO shulesoft.connect_users (name, email, username, role_id, assigned_schools, status, created_at)
-            VALUES (?, ?, ?, ?, ?, 'pending', NOW())
+        DB::insert("
+            INSERT INTO shulesoft.connect_users (name, email, password, role_id, assigned_schools, connect_organization_id, status, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, 'pending', NOW())
         ", [
-            $request->name, 
-            $request->email, 
+            $request->name,  
             $request->email,
+            $defaultPassword,
             $request->role_id,
-            implode(',', $request->assigned_schools ?? [])
+            implode(',', $request->assigned_schools ?? []),
+            Auth::user()->connect_organization_id
+        ]);
+        if (!empty($request->assigned_schools)) {
+            foreach ($request->assigned_schools as $school_setting_uid) {
+                       DB::insert("
+            INSERT INTO shulesoft.connect_schools (
+                school_setting_uid,
+                connect_organization_id,
+                connect_user_id,
+                is_active,
+                shulesoft_code,
+                settings,
+                created_by,
+                created_at
+            ) VALUES (?, ?, ?, true, ?, ?, ?, NOW())
+        ", [
+            $school_setting_uid, // school_setting_uid, set as needed
+            Auth::user()->connect_organization_id,
+            Auth::user()->id,
+            null, // shulesoft_code, set as needed
+            json_encode([]), // settings, default empty
+            Auth::user()->id
+        ]);
+            }
+        }
+
+        // Prepare the message content
+        $loginUrl = url('/login');
+       $allocatedSchool = implode(', ', $request->assigned_schools ?? []);
+        $message = "Dear {$request->name},\n\n" .
+            "You have been registered by " . Auth::user()->name . " and allocated to the school(s): {$allocatedSchool}.\n\n" .
+            "Your login URL is: {$loginUrl}\n" .
+            "Username: {$request->email}\n" .
+            "Default Password: {$defaultPassword}\n\n" .
+            "Please log in and change your password immediately.\n\n" .
+            "Thank you,\nShuleSoft Team";
+
+        // Insert the message into the shulesoft.sms table for both WhatsApp and SMS
+        DB::insert("
+            INSERT INTO shulesoft.sms (phone_number, body, sent_from, status, created_at)
+            VALUES (?, ?, 'whatsapp', 0, NOW()), (?, ?, 'sms', 0, NOW())
+        ", [
+            $request->phone, $message,
+            $request->phone, $message
         ]);
 
-        // Send invitation email
-        $this->sendUserInvitation($request->email, $request->name);
-
         return redirect()->back()->with('success', 'User created and invitation sent successfully.');
+    }
+
+    public function editUser($id)
+    {
+        // Get user data
+        $user = DB::selectOne("
+            SELECT * FROM shulesoft.connect_users 
+            WHERE id = ? AND connect_organization_id = ?
+        ", [$id, Auth::user()->connect_organization_id]);
+
+        if (!$user) {
+            return response()->json(['error' => 'User not found'], 404);
+        }
+
+        // Get user's current schools
+        $userSchools = !empty($user->assigned_schools) ? explode(',', $user->assigned_schools) : [];
+
+        // Get available schools and roles
+        $authUser = Auth::user();
+        $schools = $authUser->schools()->active()->get();
+        $roles = DB::select("SELECT * FROM shulesoft.connect_roles ORDER BY name");
+
+        // Generate HTML for the modal body
+        $html = view('settings.partials.edit-user-form', compact('user', 'schools', 'roles', 'userSchools'))->render();
+
+        return response()->json(['html' => $html]);
     }
 
     public function updateUser(Request $request, $id)
@@ -129,18 +195,98 @@ class SettingsController extends Controller
             'status' => 'required|in:active,inactive,pending'
         ]);
 
+        // Verify user belongs to current organization
+        $user = DB::selectOne("
+            SELECT * FROM shulesoft.connect_users 
+            WHERE id = ? AND connect_organization_id = ?
+        ", [$id, Auth::user()->connect_organization_id]);
+
+        if (!$user) {
+            return redirect()->back()->with('error', 'User not found or access denied.');
+        }
+
+        // Update user data
         DB::update("
             UPDATE shulesoft.connect_users 
             SET name = ?, email = ?, role_id = ?, assigned_schools = ?, status = ?, updated_at = NOW()
-            WHERE id = ?
+            WHERE id = ? AND connect_organization_id = ?
         ", [
             $request->name, 
             $request->email, 
             $request->role_id,
             implode(',', $request->assigned_schools ?? []),
             $request->status,
-            $id
+            $id,
+            Auth::user()->connect_organization_id
         ]);
+
+        // Update connect_schools table if schools changed
+        if ($request->has('assigned_schools')) {
+            // Remove existing school assignments
+            DB::delete("
+                DELETE FROM shulesoft.connect_schools 
+                WHERE connect_user_id = ? AND connect_organization_id = ?
+            ", [$id, Auth::user()->connect_organization_id]);
+
+            // Add new assignments
+            if (!empty($request->assigned_schools)) {
+                foreach ($request->assigned_schools as $school_setting_uid) {
+                    DB::insert("
+                        INSERT INTO shulesoft.connect_schools (
+                            school_setting_uid,
+                            connect_organization_id,
+                            connect_user_id,
+                            is_active,
+                            shulesoft_code,
+                            settings,
+                            created_by,
+                            created_at
+                        ) VALUES (?, ?, ?, true, ?, ?, ?, NOW())
+                    ", [
+                        $school_setting_uid,
+                        Auth::user()->connect_organization_id,
+                        $id,
+                        null,
+                        json_encode([]),
+                        Auth::user()->id
+                    ]);
+                }
+            }
+        }
+
+        // Send notification if requested
+        if ($request->has('send_notification')) {
+            $loginUrl = url('/login');
+            $allocatedSchools = !empty($request->assigned_schools) ? 
+                implode(', ', $request->assigned_schools) : 'None';
+            
+            $message = "Dear {$request->name},\n\n" .
+                "Your account has been updated by " . Auth::user()->name . ".\n\n" .
+                "Updated details:\n" .
+                "Name: {$request->name}\n" .
+                "Email: {$request->email}\n" .
+                "Status: {$request->status}\n" .
+                "Assigned Schools: {$allocatedSchools}\n\n" .
+                "Login URL: {$loginUrl}\n\n" .
+                "Thank you,\nShuleSoft Team";
+
+            // Insert notification into sms table
+            if (!empty($user->phone)) {
+                DB::insert("
+                    INSERT INTO shulesoft.sms (phone_number, body, sent_from, status, created_at)
+                    VALUES (?, ?, 'email', 0, NOW()), (?, ?, 'sms', 0, NOW()), (?, ?, 'whatsapp', 0, NOW())
+                ", [
+                    $request->email, $message,
+                    $user->phone, $message,
+                    $user->phone, $message
+                ]);
+            } else {
+                DB::insert("
+                    INSERT INTO shulesoft.sms (phone_number, body, sent_from, status, created_at)
+                    VALUES (?, ?, 'email', 0, NOW())
+                ", [$request->email, $message]);
+            }
+        }
 
         return redirect()->back()->with('success', 'User updated successfully.');
     }
@@ -157,13 +303,27 @@ class SettingsController extends Controller
     public function schools()
     {
         $schools = DB::select("
-            SELECT u.*, 
-                   (SELECT COUNT(*) FROM shulesoft.student s WHERE s.uid = u.uid) as student_count,
-                   (SELECT SUM(amount) FROM shulesoft.revenues r WHERE r.uid = u.uid AND YEAR(r.created_at) = YEAR(NOW())) as annual_revenue,
-                   (SELECT COUNT(*) FROM shulesoft.connect_users cu WHERE FIND_IN_SET(u.uid, cu.assigned_schools)) as assigned_users
-            FROM shulesoft.user u 
-            WHERE u.user_type = 'school'
-            ORDER BY u.name
+            SELECT 
+            cs.*, 
+            (
+                SELECT COUNT(*) 
+                FROM shulesoft.student s 
+                WHERE s.schema_name = st.schema_name
+            ) as student_count,
+            (
+                SELECT SUM(p.amount) 
+                FROM shulesoft.payments p 
+                WHERE p.schema_name = st.schema_name
+            ) as annual_revenue,
+            (
+                SELECT COUNT(*) 
+                FROM shulesoft.users cu 
+                WHERE cu.\"table\" in ('teacher','user') AND cu.status = 1 and cu.schema_name = st.schema_name
+            ) as assigned_users,
+             st.sname
+            FROM shulesoft.connect_schools cs
+            LEFT JOIN shulesoft.setting st ON cs.school_setting_uid = st.uid
+            ORDER BY cs.school_setting_uid
         ");
 
         return view('settings.schools', compact('schools'));
@@ -172,31 +332,30 @@ class SettingsController extends Controller
     public function storeSchool(Request $request)
     {
         if ($request->action_type === 'link_existing') {
-            $request->validate([
+            $validated = $request->validate([
                 'school_code' => 'required|string'
             ]);
+  // Check if the code exists in shulesoft.setting table
+        $setting = \DB::table('shulesoft.setting')
+            ->where('login_code', $validated['school_code'])
+            ->first();
 
-            $school = DB::selectOne("
-                SELECT * FROM shulesoft.user 
-                WHERE username = ? AND user_type = 'school'
-            ", [$request->school_code]);
+        if (!$setting) {
+            return redirect()->back()
+            ->with('error', 'Invalid code supplied.');
+        }
 
-            if (!$school) {
-                return redirect()->back()->with('error', 'School not found with the provided code.');
-            }
-
-            // Add to connect_schools if not already linked
-            $exists = DB::selectOne("
-                SELECT * FROM shulesoft.connect_schools 
-                WHERE school_uid = ?
-            ", [$school->uid]);
-
-            if (!$exists) {
-                DB::insert("
-                    INSERT INTO shulesoft.connect_schools (school_uid, linked_at, status)
-                    VALUES (?, NOW(), 'active')
-                ", [$school->uid]);
-            }
+        // Record information in shulesoft.connect_schools
+        \DB::table('shulesoft.connect_schools')->insert([
+            'school_setting_uid' => $setting->uid,
+            'connect_organization_id' => Auth::user()->connect_organization_id,
+            'connect_user_id' => Auth::id(),
+            'is_active' => true,
+            'shulesoft_code' => $validated['school_code'],
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+          
 
             return redirect()->back()->with('success', 'School linked successfully.');
         } else {
@@ -211,14 +370,64 @@ class SettingsController extends Controller
             // Create school creation request
             DB::insert("
                 INSERT INTO shulesoft.school_creation_requests 
-                (school_name, location, contact_person, contact_email, contact_phone, status, requested_at)
-                VALUES (?, ?, ?, ?, ?, 'pending', NOW())
+                (school_name, location, contact_person, contact_email, contact_phone, connect_user_id, status, requested_at, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, 'pending', NOW(), NOW())
             ", [
                 $request->school_name,
                 $request->location,
                 $request->contact_person,
                 $request->contact_email,
-                $request->contact_phone
+                $request->contact_phone,
+                Auth::user()->id
+            ]);
+
+            // Message to the contact person
+            $contactMessage = "Dear {$request->contact_person},\n\n" .
+                "A request has been submitted by " . Auth::user()->name . " to onboard your school '{$request->school_name}' to ShuleSoft for proper management. " .
+                "Our team will contact you shortly to proceed with the onboarding process.\n\n" .
+                "Thank you,\nShuleSoft Team";
+
+            DB::insert("
+                INSERT INTO shulesoft.sms (phone_number, body, sent_from, status, created_at)
+                VALUES (?, ?, 'email', 0, NOW()), (?, ?, 'sms', 0, NOW()), (?, ?, 'whatsapp', 0, NOW())
+            ", [
+                $request->contact_email, $contactMessage,
+                $request->contact_phone, $contactMessage,
+                $request->contact_phone, $contactMessage
+            ]);
+
+            // Message to the applicant
+            $applicantMessage = "Dear " . Auth::user()->name . ",\n\n" .
+                "Your request to onboard the school '{$request->school_name}' has been submitted successfully. " .
+                "Our team is working on it and will get back to you shortly.\n\n" .
+                "Thank you,\nShuleSoft Team";
+
+            DB::insert("
+                INSERT INTO shulesoft.sms (phone_number, body, sent_from, status, created_at)
+                VALUES (?, ?, 'email', 0, NOW()), (?, ?, 'sms', 0, NOW()), (?, ?, 'whatsapp', 0, NOW())
+            ", [
+                Auth::user()->email, $applicantMessage,
+                Auth::user()->phone, $applicantMessage,
+                Auth::user()->phone, $applicantMessage
+            ]);
+
+            // Message to ShuleSoft staff
+            $staffMessage = "A new school onboarding request has been submitted:\n\n" .
+                "School Name: {$request->school_name}\n" .
+                "Location: {$request->location}\n" .
+                "Contact Person: {$request->contact_person}\n" .
+                "Contact Email: {$request->contact_email}\n" .
+                "Contact Phone: {$request->contact_phone}\n" .
+                "Organization: " . Auth::user()->organization->name . "\n" .
+                "Requested By: " . Auth::user()->name . "\n\n" .
+                "Please act quickly to engage the school, allow them to fill the required forms, and proceed with onboarding.";
+
+            DB::insert("
+                INSERT INTO shulesoft.sms (phone_number, body, sent_from, status, created_at)
+                VALUES (?, ?, 'sms', 0, NOW()), (?, ?, 'whatsapp', 0, NOW())
+            ", [
+                '0714825469', $staffMessage,
+                '0714825469', $staffMessage
             ]);
 
             return redirect()->back()->with('success', 'School creation request submitted successfully.');
@@ -287,7 +496,7 @@ class SettingsController extends Controller
     public function systemConfig()
     {
         $config = DB::selectOne("
-            SELECT * FROM shulesoft.system_config 
+            SELECT * FROM shulesoft.configurations 
             WHERE id = 1
         ") ?? (object)[
             'group_name' => 'ShuleSoft Group',
@@ -343,7 +552,7 @@ class SettingsController extends Controller
     {
         $logs = DB::select("
             SELECT al.*, u.name as user_name
-            FROM shulesoft.audit_logs al
+            FROM shulesoft.log al
             LEFT JOIN shulesoft.connect_users u ON al.user_id = u.id
             ORDER BY al.created_at DESC
             LIMIT 1000
@@ -360,7 +569,7 @@ class SettingsController extends Controller
         $schools = DB::select("
             SELECT uid, name, username as school_code 
             FROM shulesoft.user 
-            WHERE user_type = 'school'
+            WHERE usertype = 'school'
             ORDER BY name
         ");
 
@@ -395,40 +604,32 @@ class SettingsController extends Controller
      */
     private function getTotalUsers()
     {
-        return DB::selectOne("SELECT COUNT(*) as count FROM shulesoft.connect_users")->count;
+        return DB::selectOne("SELECT COUNT(*) as count FROM shulesoft.connect_users where connect_organization_id=".Auth::user()->connect_organization_id)->count;
     }
 
     private function getTotalSchools()
     {
-        return DB::selectOne("SELECT COUNT(*) as count FROM shulesoft.user WHERE user_type = 'school'")->count;
+        return DB::selectOne("SELECT COUNT(*) as count FROM shulesoft.connect_schools WHERE connect_organization_id=".Auth::user()->connect_organization_id)->count;
     }
 
     private function getActiveSessions()
     {
         return DB::selectOne("
             SELECT COUNT(*) as count 
-            FROM shulesoft.user_sessions 
-            WHERE last_activity > DATE_SUB(NOW(), INTERVAL 30 MINUTE)
+            FROM shulesoft.sessions 
+            WHERE last_activity > (EXTRACT(EPOCH FROM NOW()) - 1800)
         ")->count ?? 0;
     }
 
     private function getPendingApprovals()
     {
         $pending = 0;
-        $pending += DB::selectOne("SELECT COUNT(*) as count FROM shulesoft.school_creation_requests WHERE status = 'pending'")->count ?? 0;
+       // $pending += DB::selectOne("SELECT COUNT(*) as count FROM shulesoft.school_creation_requests WHERE status = 'pending'")->count ?? 0;
         $pending += DB::selectOne("SELECT COUNT(*) as count FROM shulesoft.connect_users WHERE status = 'pending'")->count ?? 0;
         return $pending;
     }
 
-    private function getRecentActivities()
-    {
-        return DB::select("
-            SELECT action, user_name, created_at
-            FROM shulesoft.audit_logs
-            ORDER BY created_at DESC
-            LIMIT 10
-        ");
-    }
+  
 
     private function getSystemStatus()
     {
@@ -442,14 +643,9 @@ class SettingsController extends Controller
 
     private function getAllSchoolUids()
     {
-        return DB::select("SELECT uid FROM shulesoft.user WHERE user_type = 'school'");
+        return DB::select("SELECT uid FROM shulesoft.user WHERE usertype = 'school'");
     }
 
-    private function sendUserInvitation($email, $name)
-    {
-        // Implementation for sending invitation email
-        // This would integrate with your email system
-    }
 
     private function sendBulkMessage($schools, $content, $type)
     {

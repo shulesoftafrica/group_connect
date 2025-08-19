@@ -1,6 +1,7 @@
-@extends('layouts.admin')
+@extends('layouts.settings')
 
 @section('title', 'Bulk Operations')
+@section('page-title', 'Bulk Operations')
 
 @section('content')
 <div class="container-fluid">
