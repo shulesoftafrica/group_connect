@@ -110,7 +110,7 @@
                             <i class="bi bi-three-dots-vertical"></i>
                         </button>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="#" onclick="viewSchoolDetails({{ $school->id }})">
+                            <!-- <li><a class="dropdown-item" href="#" onclick="viewSchoolDetails({{ $school->id }})">
                                 <i class="bi bi-eye me-2"></i>View Details
                             </a></li>
                             <li><a class="dropdown-item" href="#" onclick="editSchool({{ $school->id }})">
@@ -119,10 +119,16 @@
                             <li><a class="dropdown-item" href="#" onclick="manageUsers({{ $school->id }})">
                                 <i class="bi bi-people me-2"></i>Manage Users
                             </a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item text-danger" href="#" onclick="unlinkSchool({{ $school->id }})">
-                                <i class="bi bi-unlink me-2"></i>Unlink School
-                            </a></li>
+                            <li><hr class="dropdown-divider"></li> -->
+                            <li>
+                             <form action="{{ route('schools.destroy', $school->id) }}" method="POST" onsubmit="return confirm('Are you sure you want to remove this school from your group?');">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="dropdown-item text-danger">
+                                                <i class="bi bi-trash me-2"></i>Remove
+                                            </button>
+                                        </form>
+                                        </li>
                         </ul>
                     </div>
                 </div>

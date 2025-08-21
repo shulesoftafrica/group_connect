@@ -4,6 +4,7 @@
 @section('page-title', 'User Management')
 
 @section('content')
+
 <div class="container-fluid">
     <!-- Header -->
     <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
@@ -107,7 +108,13 @@
                                     </td>
                                     <td>
                                         <div class="small">
-                                            {{ $user->assigned_school_names ? Str::limit($user->assigned_school_names, 30) : 'No schools assigned' }}
+                                            @if($user->assigned_school_names)
+                                                @foreach(explode(',', $user->assigned_school_names) as $school)
+                                                    <span class="badge bg-secondary me-1">{{ $school }}</span>
+                                                @endforeach
+                                            @else
+                                                <span class="text-muted">No schools assigned</span>
+                                            @endif
                                         </div>
                                     </td>
                                     <td>
@@ -124,22 +131,24 @@
                                         </span>
                                     </td>
                                     <td>
-                                        <div class="btn-group" role="group">
-                                            <button type="button" class="btn btn-sm btn-outline-primary" 
-                                                    onclick="editUser({{ $user->id }})" data-bs-toggle="tooltip" title="Edit User">
-                                                <i class="bi bi-pencil"></i>
-                                            </button>
-                                            @if($user->status === 'pending')
-                                            <button type="button" class="btn btn-sm btn-outline-success" 
-                                                    onclick="resendInvitation({{ $user->id }})" data-bs-toggle="tooltip" title="Resend Invitation">
-                                                <i class="bi bi-envelope"></i>
-                                            </button>
-                                            @endif
-                                            <button type="button" class="btn btn-sm btn-outline-danger" 
-                                                    onclick="deleteUser({{ $user->id }})" data-bs-toggle="tooltip" title="Delete User">
-                                                <i class="bi bi-trash"></i>
-                                            </button>
-                                        </div>
+                                        @if(auth()->user()->id !== $user->id)
+                                            <div class="btn-group" role="group">
+                                                <button type="button" class="btn btn-sm btn-outline-primary" 
+                                                        onclick="editUser({{ $user->id }})" data-bs-toggle="tooltip" title="Edit User">
+                                                    <i class="bi bi-pencil"></i>
+                                                </button>
+                                                @if($user->status === 'pending')
+                                                <button type="button" class="btn btn-sm btn-outline-success" 
+                                                        onclick="resendInvitation({{ $user->id }})" data-bs-toggle="tooltip" title="Resend Invitation">
+                                                    <i class="bi bi-envelope"></i>
+                                                </button>
+                                                @endif
+                                                <button type="button" class="btn btn-sm btn-outline-danger" 
+                                                        onclick="deleteUser({{ $user->id }})" data-bs-toggle="tooltip" title="Delete User">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </div>
+                                        @endif
                                     </td>
                                 </tr>
                                 @empty
@@ -211,11 +220,30 @@
 
                     <div class="mb-3">
                         <label for="assigned_schools" class="form-label">Assign Schools</label>
-                        <select class="form-select" id="assigned_schools" name="assigned_schools[]" multiple>
-                            @foreach($schools as $school)
-                            <option value="{{ $school->school_setting_uid }}">({{ $school->schoolSetting->sname }})</option>
-                            @endforeach
+                        <select class="form-select " id="assigned_schools" name="assigned_schools[]" multiple data-live-search="true" data-actions-box="true">
+                            @if($schools->isNotEmpty())
+                                @foreach($schools as $school)
+                                <option value="{{ $school->school_setting_uid }}">{{ $school->schoolSetting->sname }}</option>
+                                @endforeach
+                            @else
+                                <option disabled>No schools available</option>
+                            @endif
                         </select>
+                        <script>
+                            // $(document).ready(function() {
+                            //     $('.selectpicker').selectpicker();
+
+                            //     // Ensure aria-hidden is properly managed for modals
+                            //     const addUserModal = document.getElementById('addUserModal');
+                            //     addUserModal.addEventListener('show.bs.modal', function () {
+                            //         addUserModal.removeAttribute('inert');
+                            //     });
+                            //     addUserModal.addEventListener('hidden.bs.modal', function () {
+                            //         addUserModal.setAttribute('inert', '');
+                            //     });
+                            // });
+                        </script>
+                       
                         <div class="form-text">Hold Ctrl/Cmd to select multiple schools</div>
                     </div>
 
@@ -304,13 +332,51 @@ function applyFilters() {
 }
 
 function editUser(userId) {
-    // Load user data and show edit modal
+    // Show loading state
+    const editModal = document.getElementById('editUserModal');
+    const editModalBody = document.getElementById('editUserBody');
+    
+    // Show loading spinner
+    editModalBody.innerHTML = `
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Loading user data...</p>
+        </div>
+    `;
+    
+    // Show modal immediately with loading state
+    new bootstrap.Modal(editModal).show();
+    
+    // Load user data
     fetch(`/settings/users/${userId}/edit`)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
         .then(data => {
-            document.getElementById('editUserBody').innerHTML = data.html;
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            
+            editModalBody.innerHTML = data.html;
             document.getElementById('editUserForm').action = `/settings/users/${userId}`;
-            new bootstrap.Modal(document.getElementById('editUserModal')).show();
+        })
+        .catch(error => {
+            console.error('Error loading user data:', error);
+            editModalBody.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Error loading user data:</strong> ${error.message}
+                    <br><small>Please try again or contact support if the problem persists.</small>
+                </div>
+                <div class="text-center">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            `;
         });
 }
 

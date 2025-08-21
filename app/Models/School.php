@@ -73,7 +73,7 @@ class School extends Model
     {
         return DB::table('shulesoft.payments')
             ->where('schema_name', $this->schoolSetting->schema_name)
-            ->whereYear('created_at', date('Y'))
+            ->whereYear('date', date('Y'))
             ->sum('amount');
     }
 
@@ -81,7 +81,7 @@ class School extends Model
     {
         return DB::table('shulesoft.revenues')
             ->where('schema_name', $this->schoolSetting->schema_name)
-            ->whereYear('created_at', date('Y'))
+            ->whereYear('date', date('Y'))
             ->sum('amount');
     }
 
@@ -89,16 +89,23 @@ class School extends Model
     {
         return DB::table('shulesoft.expenses')
             ->where('schema_name', $this->schoolSetting->schema_name)
-            ->whereYear('created_at', date('Y'))
+            ->whereYear('date', date('Y'))
             ->sum('amount');
     }
 
     public function outstandingFees()
     {
-        return DB::table('shulesoft.material_invoice_balance')
-            ->where('schema_name', $this->schoolSetting->schema_name)
-           ->whereYear('end_date', date('Y'))
-            ->sum('total_amount') - $this->totalRevenue();
+         $query=DB::table('shulesoft.material_invoice_balance')
+            ->where('schema_name', $this->schoolSetting->schema_name) 
+            ->whereIn('academic_year_id', function ($query) {
+                $query->select('id')
+                    ->from('shulesoft.academic_year')
+                    ->where('schema_name', $this->schoolSetting->schema_name)
+                    ->whereYear('start_date', date('Y'))
+                    ->whereYear('end_date', date('Y'));
+            })
+            ->sum('total_amount') ;
+            return $query;
     }
 
     public function staffCount()
@@ -122,6 +129,13 @@ class School extends Model
         return DB::table('shulesoft.sms')
             ->where('schema_name', $this->schoolSetting->schema_name)
             ->count();
+    }
+
+    public function schoolLevels(){
+        return DB::table('shulesoft.classlevel')
+            ->where('schema_name', $this->schoolSetting->schema_name)
+            ->pluck('name')
+            ->toArray();
     }
 
     public function lastLogDateTime()
@@ -167,15 +181,18 @@ class School extends Model
         // Total collected from payments within date range
         $totalCollected = DB::table('shulesoft.payments')
             ->where('schema_name', $schemaName)
-            ->whereBetween('date', [$start_date, $end_date])
+            ->whereYear('date', date('Y'))
             ->sum('amount');
 
         // Total to be collected from fees_installments_classes within date range
         $totalToBeCollected = DB::table('shulesoft.material_invoice_balance')
             ->where('schema_name', $schemaName)
-                ->where(function ($query) {
-                $query->whereBetween('end_date', [$this->start, $this->end])
-                      ->orWhereBetween('start_date', [$this->start, $this->end]);
+           ->whereIn('academic_year_id', function ($query) {
+                $query->select('id')
+                    ->from('shulesoft.academic_year')
+                    ->where('schema_name', $this->schoolSetting->schema_name)
+                    ->whereYear('start_date', date('Y'))
+                    ->whereYear('end_date', date('Y'));
             })
             ->sum('total_amount');
 

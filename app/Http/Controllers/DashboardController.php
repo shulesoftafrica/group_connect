@@ -26,7 +26,9 @@ class DashboardController extends Controller
         $avgAttendance = $this->getAverageAttendance($schemaNames);
         $feesCollected = $this->getFeesCollected($schemaNames);
         $feestobeCollected = $this->getFeesToBeCollected($schemaNames);
-        $collection_rate=round(($feesCollected / $feestobeCollected) * 100, 2);
+        $collection_rate = $feestobeCollected > 0 
+            ? round(($feesCollected / $feestobeCollected) * 100, 2) 
+            : 0;
         
         $activeSchools = count($schemaNames);
         $totalSchools = $schools->count();

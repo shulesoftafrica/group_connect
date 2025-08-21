@@ -184,7 +184,7 @@ class OperationsController extends Controller
 
  
 
-        $occupancyRate = $totalCapacity > 0 ? round(($currentOccupied / $totalCapacity) * 100, 1) : rand(75, 95);
+        $occupancyRate = $totalCapacity > 0 ? round(($currentOccupied / $totalCapacity) * 100, 1) : 0;
         $hostelMaintenanceRequests = 0;
 
         // Library activity: schema.sql doesn't expose library tables clearly -> default values
@@ -226,7 +226,7 @@ class OperationsController extends Controller
             'student_attendance' => [
                 'average' => (float) $studentAttendanceAvg,
                 'trend' => 0, // trend calculation not available from schema reliably -> default
-                'schools_below_threshold' => max(0, (int)\DB::table('shulesoft.student')->where('status', 0)->whereIn('schema_name', $schemaNames)->count() ?: rand(0, 3))
+                'schools_below_threshold' => max(0, (int)\DB::table('shulesoft.student')->where('status', 0)->whereIn('schema_name', $schemaNames)->count() ?: 0)
             ],
             'staff_attendance' => [
                 'average' => (float) $staffAttendanceAvg,
@@ -281,7 +281,7 @@ class OperationsController extends Controller
                 'name' => $settings->sname ?? 'Unknown School',
                     'code' => $settings->login_code,
                     'region' => $settings->address?? 'Unknown',
-                    'type' => $settings->school_type?? 'Primary',
+                    'type' => is_array($school->schoolLevels()) ? implode(', ', $school->schoolLevels()) : ($settings->schoolLevels() ?? 'Primary'),
                     'student_count' => $school->studentsCount() ?? rand(200, 1000),
                     'staff_count' => $school->staffCount() ?? rand(20, 80),
                     'operational_status' => $this->calculateOperationalStatus($school),
@@ -295,11 +295,11 @@ class OperationsController extends Controller
     {
         // Simulate operational status calculation based on various factors
         $scores = [
-            'attendance' => rand(70, 100),
-            'transport' => rand(75, 100),
-            'hostel' => rand(80, 100),
-            'library' => rand(75, 95),
-            'compliance' => rand(85, 100)
+            'attendance' => round($school->attendanceRate(), 2),
+            // 'transport' => rand(75, 100),
+            // 'hostel' => rand(80, 100),
+            // 'library' => rand(75, 95),
+            // 'compliance' => rand(85, 100)
         ];
         
         $average = array_sum($scores) / count($scores);

@@ -187,18 +187,12 @@ class FinanceController extends Controller
 
         // group revenue from payments (no date window available here)
 
-        $totalRevenue = DB::table('shulesoft.payments')
-            ->when(count($schemaNames) > 0, function ($q) use ($schemaNames) {
-            return $q->whereIn('schema_name', $schemaNames);
-            })
+        $totalRevenue = DB::table('shulesoft.payments')->whereIn('schema_name', $schemaNames)
             ->whereBetween('created_at', [$this->start, $this->end])
             ->sum('amount');
 
         // total fees expected (to be collected)
-        $totalFeesToBe = DB::table('shulesoft.material_invoice_balance')
-            ->when(count($schemaNames) > 0, function ($q) use ($schemaNames) {
-            return $q->whereIn('schema_name', $schemaNames);
-            })
+        $totalFeesToBe = DB::table('shulesoft.material_invoice_balance')->whereIn('schema_name', $schemaNames)
             ->where(function ($query) {
                 $query->whereBetween('end_date', [$this->start, $this->end])
                       ->orWhereBetween('start_date', [$this->start, $this->end]);
@@ -214,13 +208,10 @@ class FinanceController extends Controller
             return Carbon::now()->subMonths($i)->format('m');
         });
         $feeCollectionTrend = $months->map(function ($month) use ($schemaNames) {
-            return (float) DB::table('shulesoft.payments')
-            ->when(count($schemaNames) > 0, function ($q) use ($schemaNames) {
-                return $q->whereIn('schema_name', $schemaNames);
-            })
-             ->whereBetween('created_at', [$this->start, $this->end])
-            ->whereMonth('created_at', $month)
-            ->sum('amount');
+            return (float) DB::table('shulesoft.payments')->whereIn('schema_name', $schemaNames)
+                ->whereBetween('created_at', [$this->start, $this->end])
+                ->whereMonth('created_at', $month)
+                ->sum('amount');
         });
 
         // budget preparation status using DashboardController->getPendingBudgets
@@ -231,9 +222,7 @@ class FinanceController extends Controller
         $bank_balances = DB::table('shulesoft.payments as p')
             ->join('shulesoft.bank_accounts as ba', 'p.bank_account_id', '=', 'ba.id')
             ->join('constant.refer_banks as rb', 'ba.refer_bank_id', '=', 'rb.id')
-            ->when(count($schemaNames) > 0, function ($q) use ($schemaNames) {
-            return $q->whereIn('p.schema_name', $schemaNames);
-            })
+            ->whereIn('p.schema_name', $schemaNames)
             ->whereBetween('p.created_at', [$this->start, $this->end])
             ->groupBy('rb.id', 'rb.name')
             ->select('rb.id as bank_id', 'rb.name as bank_name', DB::raw('COALESCE(SUM(p.amount),0) as total_collected'))
@@ -243,10 +232,9 @@ class FinanceController extends Controller
             })
             ->toArray();
 
-            $salariesSums = DB::table('shulesoft.salaries')
-                ->when(count($schemaNames) > 0, function ($q) use ($schemaNames) {
-                    return $q->whereIn('schema_name', $schemaNames);
-                })
+           
+         $salariesSums = DB::table('shulesoft.salaries')
+                ->whereIn('schema_name', $schemaNames)
                 ->whereBetween('created_at', [$this->start, $this->end])
                 ->select(
                     DB::raw('COALESCE(SUM(net_pay),0) as total_net_pay'),
@@ -274,9 +262,7 @@ class FinanceController extends Controller
             ],
             'group_expenses' => [
             'total' => DB::table('shulesoft.expenses')
-                ->when(count($schemaNames) > 0, function ($q) use ($schemaNames) {
-                    return $q->whereIn('schema_name', $schemaNames);
-                })
+                ->whereIn('schema_name', $schemaNames)
                 ->whereBetween('created_at', [$this->start, $this->end])
                 ->sum('amount'),
             'monthly_trend' => null,
@@ -290,9 +276,7 @@ class FinanceController extends Controller
             ],
             'fixed_assets' => [
             'total_assets' => DB::table('shulesoft.fixed_assets')
-                ->when(count($schemaNames) > 0, function ($q) use ($schemaNames) {
-                    return $q->whereIn('schema_name', $schemaNames);
-                })
+                ->whereIn('schema_name', $schemaNames)
                 ->whereBetween('created_at', [$this->start, $this->end])
                 ->sum('amount'),   // not available
             ],
@@ -339,7 +323,7 @@ class FinanceController extends Controller
                     'expenses' => $expenses,
                     'profit_margin' => $revenue > 0 ? round((($revenue - $expenses) / $revenue) * 100, 1) : 0,
                     'outstanding_fees' => $outstandingFees,
-                    'collection_rate' => $revenue > 0 ? round(($outstandingFees) / $revenue * 100, 1) : 0,
+                    'collection_rate' => $outstandingFees > 0 ? round($revenue/($outstandingFees)  * 100, 1) : 0,
                    // 'bank_balance' => rand(500000, 5000000),
                     'financial_health' => $this->calculateFinancialHealth($revenue, $expenses, $outstandingFees),
                     'last_updated' => Carbon::now()->format('Y-m-d'),
@@ -390,13 +374,12 @@ class FinanceController extends Controller
                 })
                 ->whereIn('ba.schema_name', $schemaArray)
                 ->where('ba.is_active', true)
-                ->groupBy('rb.id', 'rb.name', 'ba.id', 'ba.account_number', 'ba.balance', 'ba.schema_name', 's.school_name')
+                ->groupBy('rb.id', 'rb.name', 'ba.id', 'ba.number', 'ba.schema_name', 's.school_name')
                 ->select(
                     'rb.id as bank_id',
                     'rb.name as bank_name',
                     'ba.id as account_id',
-                    'ba.account_number',
-                    'ba.balance',
+                    'ba.number',
                     'ba.schema_name',
                     's.school_name',
                     DB::raw('MAX(p.date) as last_transaction_date'),

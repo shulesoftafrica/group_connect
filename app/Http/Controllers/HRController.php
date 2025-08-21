@@ -187,7 +187,7 @@ class HRController extends Controller
             ->where('created_at', '>=', Carbon::now()->startOfMonth())
             ->value('attendance_percentage');
 
-        $avgAttendance = $schemaAttendance ? round($schemaAttendance, 1) : 95.0;
+        $avgAttendance = $schemaAttendance ? round($schemaAttendance, 1) : 0;
         $turnoverRate = $totalStaff > 0 ? ($monthlyResignations / $totalStaff) * 100 : 0;
 
         return [
@@ -423,6 +423,7 @@ class HRController extends Controller
 
             // Staff count at end of month
             $staffCount = DB::table('users')
+            ->whereIn('users.schema_name', $this->schemaNames)
                 ->whereIn('table', ['teacher', 'user'])
                 ->where('created_at', '<=', $month->endOfMonth())
                 ->count();
@@ -430,6 +431,7 @@ class HRController extends Controller
 
             // Turnover (resignations) in that month
             $turnover = DB::table('users')
+            ->whereIn('users.schema_name', $this->schemaNames)
                 ->where('status', 1)
                 ->whereIn('table', ['teacher', 'user'])
                 ->whereBetween('updated_at', [$month->startOfMonth(), $month->endOfMonth()])
@@ -438,6 +440,7 @@ class HRController extends Controller
 
             // New hires in that month
             $hires = DB::table('users')
+            ->whereIn('users.schema_name', $this->schemaNames)
                 ->whereIn('table', ['teacher', 'user'])
                 ->whereBetween('created_at', [$month->startOfMonth(), $month->endOfMonth()])
                 ->count();
@@ -543,9 +546,9 @@ class HRController extends Controller
 
         // Attendance by category - simplified since we can't easily join across schemas
         $attendanceByCategory = [
-            'Teachers' => 94.5,
-            'Support Staff' => 93.2,
-            'Administration' => 96.8,
+            'Teachers' => 0,
+            'Support Staff' => 0,
+            'Administration' => 0,
         ];
 
         // Weekly trends for current month
@@ -697,16 +700,16 @@ class HRController extends Controller
     {
         return [
             'summary' => [
-                'total_staff' => rand(25, 85),
-                'active_staff' => rand(20, 80),
-                'vacant_positions' => rand(0, 5),
-                'turnover_rate' => round(rand(5, 15) + (rand(0, 9) / 10), 1),
-                'attendance_rate' => round(rand(85, 98) + (rand(0, 9) / 10), 1)
+                'total_staff' => 0,
+                'active_staff' => 0,
+                'vacant_positions' => 0,
+                'turnover_rate' => 0,
+                'attendance_rate' => 0
             ],
             'trends' => [
-                'staff_growth' => rand(-5, 15),
-                'turnover_trend' => rand(-3, 8),
-                'attendance_trend' => rand(-2, 5)
+                'staff_growth' => 0,
+                'turnover_trend' => 0,
+                'attendance_trend' => 0
             ]
         ];
     }
@@ -715,15 +718,15 @@ class HRController extends Controller
     {
         return [
             'by_role' => [
-                'Teachers' => rand(15, 45),
-                'Support Staff' => rand(5, 15),
-                'Administration' => rand(2, 8),
-                'Management' => rand(1, 4)
+                'Teachers' => 0,
+                'Support Staff' => 0,
+                'Administration' => 0,
+                'Management' => 0
             ],
             'by_status' => [
-                'Active' => rand(20, 65),
-                'On Leave' => rand(1, 5),
-                'Probation' => rand(0, 3)
+                'Active' => 0,
+                'On Leave' => 0,
+                'Probation' => 0
             ],
             'recent_hires' => [
                 ['name' => 'John Msamba', 'position' => 'Mathematics Teacher', 'date' => '2024-01-15'],
@@ -736,15 +739,15 @@ class HRController extends Controller
     private function getSchoolAttendanceData($school)
     {
         return [
-            'current_rate' => round(rand(85, 98) + (rand(0, 9) / 10), 1),
+            'current_rate' => 0,
             'by_category' => [
-                'Teachers' => round(rand(88, 99) + (rand(0, 9) / 10), 1),
-                'Support Staff' => round(rand(85, 96) + (rand(0, 9) / 10), 1),
-                'Administration' => round(rand(90, 99) + (rand(0, 9) / 10), 1)
+                'Teachers' => 0,
+                'Support Staff' => 0,
+                'Administration' => 0
             ],
             'monthly_trends' => [
                 'labels' => ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-                'values' => [92.1, 93.8, 94.5, 93.2, 94.8, 94.2]
+                'values' => [0, 0, 0, 0, 0, 0]
             ]
         ];
     }
@@ -752,12 +755,12 @@ class HRController extends Controller
     private function getSchoolLeaveData($school)
     {
         return [
-            'pending_requests' => rand(2, 8),
-            'approved_this_month' => rand(5, 15),
+            'pending_requests' => 0,
+            'approved_this_month' => 0,
             'leave_balances' => [
-                'Annual Leave' => rand(15, 25),
-                'Sick Leave' => rand(8, 15),
-                'Maternity Leave' => rand(0, 3)
+                'Annual Leave' => 0,
+                'Sick Leave' => 0,
+                'Maternity Leave' => 0
             ],
             'recent_requests' => [
                 ['staff' => 'Jane Mwalimu', 'type' => 'Annual Leave', 'days' => 5, 'status' => 'pending'],
@@ -770,39 +773,39 @@ class HRController extends Controller
     private function getSchoolPayrollData($school)
     {
         return [
-            'monthly_payroll' => rand(1500000, 4500000),
+            'monthly_payroll' => 0,
             'by_category' => [
-                'Basic Salary' => rand(1200000, 3200000),
-                'Allowances' => rand(200000, 800000),
-                'Overtime' => rand(50000, 300000),
-                'Deductions' => rand(-150000, -500000)
+                'Basic Salary' => 0,
+                'Allowances' => 0,
+                'Overtime' => 0,
+                'Deductions' => 0
             ],
-            'compliance_status' => rand(95, 100),
-            'pending_payments' => rand(0, 3)
+            'compliance_status' => 0,
+            'pending_payments' => 0
         ];
     }
 
     private function getSchoolPerformanceData($school)
     {
         return [
-            'appraisal_completion' => rand(75, 100),
+            'appraisal_completion' => 0,
             'performance_distribution' => [
-                'Excellent' => rand(5, 15),
-                'Good' => rand(15, 35),
-                'Satisfactory' => rand(8, 20),
-                'Needs Improvement' => rand(0, 5)
+                'Excellent' => 0,
+                'Good' => 0,
+                'Satisfactory' => 0,
+                'Needs Improvement' => 0
             ],
-            'training_completion' => rand(65, 95)
+            'training_completion' => 0
         ];
     }
 
     private function getSchoolRecruitmentData($school)
     {
         return [
-            'open_positions' => rand(0, 3),
-            'applications_received' => rand(5, 25),
-            'interviews_conducted' => rand(2, 15),
-            'recent_hires' => rand(0, 5)
+            'open_positions' => 0,
+            'applications_received' => 0,
+            'interviews_conducted' => 0,
+            'recent_hires' => 0
         ];
     }
 
@@ -834,17 +837,17 @@ class HRController extends Controller
     {
         return [
             'summary' => [
-                'total_positions' => 23,
-                'applications' => 145,
-                'in_progress' => 67,
-                'filled_positions' => 12
+                'total_positions' => 0,
+                'applications' => 0,
+                'in_progress' => 0,
+                'filled_positions' => 0
             ],
             'positions' => [
                 [
                     'id' => 1,
                     'title' => 'Mathematics Teacher',
                     'school' => 'Dar es Salaam Secondary',
-                    'applications' => 15,
+                    'applications' => 0,
                     'status' => 'Interviewing',
                     'posted_date' => '2024-01-10'
                 ],
@@ -852,7 +855,7 @@ class HRController extends Controller
                     'id' => 2,
                     'title' => 'Science Laboratory Assistant',
                     'school' => 'Mwanza Primary',
-                    'applications' => 8,
+                    'applications' => 0,
                     'status' => 'Open',
                     'posted_date' => '2024-01-15'
                 ]
@@ -864,10 +867,10 @@ class HRController extends Controller
     {
         return [
             'summary' => [
-                'pending_requests' => 34,
-                'approved_this_month' => 128,
-                'rejected_this_month' => 7,
-                'total_leave_days' => 892
+                'pending_requests' => 0,
+                'approved_this_month' => 0,
+                'rejected_this_month' => 0,
+                'total_leave_days' => 0
             ],
             'requests' => [
                 [

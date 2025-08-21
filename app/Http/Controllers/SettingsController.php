@@ -75,14 +75,16 @@ class SettingsController extends Controller
     {
         $users = DB::select("
             SELECT u.*,
-                   (SELECT STRING_AGG(DISTINCT sch.name, ', ')
-                    FROM shulesoft.user sch
-                    WHERE ',' || u.name || ',' LIKE '%,' || sch.uid || ',%') as assigned_school_names
+               (SELECT STRING_AGG(DISTINCT sch.sname, ', ')
+                FROM shulesoft.setting sch
+                JOIN shulesoft.connect_schools cs ON cs.school_setting_uid = sch.uid
+                WHERE cs.connect_organization_id = u.connect_organization_id and cs.connect_user_id=u.id) as assigned_school_names
             FROM shulesoft.connect_users u
+            WHERE u.connect_organization_id = ?
             ORDER BY u.created_at DESC
-        ");
+        ", [Auth::user()->connect_organization_id]);
 
-         $user = Auth::user();
+        $user = Auth::user();
         $schools =$user->schools()->active()->get();
         $roles = DB::select("SELECT * FROM shulesoft.connect_roles ORDER BY name");
 
@@ -174,28 +176,40 @@ class SettingsController extends Controller
 
     public function editUser($id)
     {
-        // Get user data
-        $user = DB::selectOne("
-            SELECT * FROM shulesoft.connect_users 
-            WHERE id = ? AND connect_organization_id = ?
-        ", [$id, Auth::user()->connect_organization_id]);
+        try {
+            // Get user data
+            $user = DB::selectOne("
+                SELECT * FROM shulesoft.connect_users 
+                WHERE id = ? AND connect_organization_id = ?
+            ", [$id, Auth::user()->connect_organization_id]);
 
-        if (!$user) {
-            return response()->json(['error' => 'User not found'], 404);
+            if (!$user) {
+                return response()->json(['error' => 'User not found'], 404);
+            }
+
+            // Get user's current schools
+            $userSchools = !empty($user->assigned_schools) ? explode(',', $user->assigned_schools) : [];
+
+            // Get available schools and roles
+            $schools = DB::select("
+                SELECT s.*, cs.school_name 
+                FROM shulesoft.connect_schools cs
+                LEFT JOIN shulesoft.setting s ON cs.school_setting_uid = s.uid
+                WHERE cs.connect_organization_id = ? AND cs.is_active = 1
+                ORDER BY COALESCE(cs.school_name, s.school_name)
+            ", [Auth::user()->connect_organization_id]);
+
+            $roles = DB::select("SELECT * FROM shulesoft.connect_roles ORDER BY name");
+
+            // Generate HTML for the modal body
+            $html = view('settings.partials.edit-user-form', compact('user', 'schools', 'roles', 'userSchools'))->render();
+
+            return response()->json(['html' => $html]);
+            
+        } catch (\Exception $e) {
+            \Log::error('Error in editUser: ' . $e->getMessage());
+            return response()->json(['error' => 'Unable to load user data. Please try again.'], 500);
         }
-
-        // Get user's current schools
-        $userSchools = !empty($user->assigned_schools) ? explode(',', $user->assigned_schools) : [];
-
-        // Get available schools and roles
-        $authUser = Auth::user();
-        $schools = $authUser->schools()->active()->get();
-        $roles = DB::select("SELECT * FROM shulesoft.connect_roles ORDER BY name");
-
-        // Generate HTML for the modal body
-        $html = view('settings.partials.edit-user-form', compact('user', 'schools', 'roles', 'userSchools'))->render();
-
-        return response()->json(['html' => $html]);
     }
 
     public function updateUser(Request $request, $id)
@@ -203,7 +217,7 @@ class SettingsController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email',
-            'role_id' => 'required|exists:shulesoft.connect_roles,id',
+            'role_id' => 'required|exists:connect_roles,id',
             'assigned_schools' => 'array',
             'status' => 'required|in:active,inactive,pending'
         ]);
@@ -503,7 +517,7 @@ class SettingsController extends Controller
     public function storeRole(Request $request)
     {
         $request->validate([
-            'name' => 'required|string|max:255|unique:shulesoft.connect_roles',
+            'name' => 'required|string|max:255|unique:connect_roles',
             'description' => 'required|string',
             'permissions' => 'array'
         ]);
@@ -968,5 +982,208 @@ class SettingsController extends Controller
                 VALUES (?, ?, ?, 'active', NOW())
             ", [$schoolUid, $type, $content]);
         }
+    }
+
+    // ==================================================
+    // NEW PAGE-BASED ONBOARDING SYSTEM
+    // ==================================================
+
+    /**
+     * Start onboarding process - redirect to step 1
+     */
+    public function onboardingStart()
+    {
+        return redirect()->route('onboarding.step1');
+    }
+
+    /**
+     * Step 1: Organization Information
+     */
+    public function onboardingStep1(Request $request)
+    {
+        // Get data from session if returning from next step
+        $data = session('onboarding_data', []);
+        return view('onboarding.step1', compact('data'));
+    }
+
+    public function saveStep1(Request $request)
+    {
+        $validated = $request->validate([
+            'org_name' => 'required|string|max:255|regex:/^[a-zA-Z0-9\s.&\'-]+$/',
+            'org_email' => 'required|email|max:255',
+            'contact_name' => 'required|string|max:255|regex:/^[a-zA-Z\s.\'-]+$/',
+            'contact_email' => 'required|email|max:255',
+            'contact_phone' => 'required|string|regex:/^[\+]?[0-9\s\-\(\)]{10,}$/',
+        ]);
+
+        // Store in session
+        $onboardingData = session('onboarding_data', []);
+        $onboardingData = array_merge($onboardingData, $validated);
+        session(['onboarding_data' => $onboardingData]);
+
+        return redirect()->route('onboarding.step2')->with('success', 'Organization information saved successfully!');
+    }
+
+    /**
+     * Step 2: School Count & Usage
+     */
+    public function onboardingStep2(Request $request)
+    {
+        // Check if step 1 is completed
+        $data = session('onboarding_data', []);
+        if (!isset($data['org_name'])) {
+            return redirect()->route('onboarding.step1')->with('error', 'Please complete organization information first.');
+        }
+        
+        return view('onboarding.step2', compact('data'));
+    }
+
+    public function saveStep2(Request $request)
+    {
+        $validated = $request->validate([
+            'schools_count' => 'required|integer|min:2',
+            'usage_status' => 'required|in:all,some,none',
+        ]);
+
+        // Store in session
+        $onboardingData = session('onboarding_data', []);
+        $onboardingData = array_merge($onboardingData, $validated);
+        session(['onboarding_data' => $onboardingData]);
+
+        return redirect()->route('onboarding.step3')->with('success', 'School information saved successfully!');
+    }
+
+    /**
+     * Step 3: School Details
+     */
+    public function onboardingStep3(Request $request)
+    {
+        // Check if previous steps are completed
+        $data = session('onboarding_data', []);
+        if (!isset($data['org_name']) || !isset($data['usage_status'])) {
+            return redirect()->route('onboarding.step1')->with('error', 'Please complete previous steps first.');
+        }
+        
+        return view('onboarding.step3', compact('data'));
+    }
+
+    public function saveStep3(Request $request)
+    {
+        // Get onboarding data from session
+        $onboardingData = session('onboarding_data', []);
+        $usageStatus = $onboardingData['usage_status'] ?? '';
+
+        // Dynamic validation based on usage status
+        $rules = [];
+        if ($usageStatus === 'all') {
+            $rules['shulesoft_schools'] = 'required|array|min:1';
+            $rules['shulesoft_schools.*.login_code'] = 'required|string|max:50';
+        } elseif ($usageStatus === 'some') {
+            $rules['mixed_schools'] = 'required|array|min:1';
+            $rules['mixed_schools.*.type'] = 'required|in:existing,new';
+            $rules['mixed_schools.*.login_code'] = 'required_if:mixed_schools.*.type,existing|string|max:50';
+            $rules['mixed_schools.*.school_name'] = 'required_if:mixed_schools.*.type,new|string|max:255';
+            $rules['mixed_schools.*.location'] = 'required_if:mixed_schools.*.type,new|string|max:255';
+            $rules['mixed_schools.*.contact_person'] = 'required_if:mixed_schools.*.type,new|string|max:255';
+            $rules['mixed_schools.*.contact_email'] = 'required_if:mixed_schools.*.type,new|email|max:255';
+            $rules['mixed_schools.*.contact_phone'] = 'required_if:mixed_schools.*.type,new|string|max:20';
+        } else { // none
+            $rules['new_schools'] = 'required|array|min:1';
+            $rules['new_schools.*.school_name'] = 'required|string|max:255';
+            $rules['new_schools.*.location'] = 'required|string|max:255';
+            $rules['new_schools.*.contact_person'] = 'required|string|max:255';
+            $rules['new_schools.*.contact_email'] = 'required|email|max:255';
+            $rules['new_schools.*.contact_phone'] = 'required|string|max:20';
+        }
+
+        $validated = $request->validate($rules);
+
+        // Store in session
+        $onboardingData = array_merge($onboardingData, $validated);
+        session(['onboarding_data' => $onboardingData]);
+
+        return redirect()->route('onboarding.step4')->with('success', 'School details saved successfully!');
+    }
+
+    /**
+     * Step 4: Account Setup
+     */
+    public function onboardingStep4(Request $request)
+    {
+        // Check if previous steps are completed
+        $data = session('onboarding_data', []);
+        if (!isset($data['org_name']) || !isset($data['usage_status'])) {
+            return redirect()->route('onboarding.step1')->with('error', 'Please complete previous steps first.');
+        }
+        
+        return view('onboarding.step4', compact('data'));
+    }
+
+    public function completeOnboarding(Request $request)
+    {
+        $validated = $request->validate([
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        // Get all onboarding data from session
+        $onboardingData = session('onboarding_data', []);
+        $onboardingData = array_merge($onboardingData, $validated);
+
+        try {
+            DB::beginTransaction();
+
+            // Create organization
+            $organizationId = DB::table('shulesoft.connect_organizations')->insertGetId([
+                'username' => strtolower(str_replace(' ', '_', $onboardingData['org_name'])) . '_' . time(),
+                'name' => $onboardingData['org_name'],
+                'description' => "Organization: {$onboardingData['org_name']}. Contact: {$onboardingData['contact_name']} ({$onboardingData['contact_email']}). Schools: {$onboardingData['schools_count']}. Usage: {$onboardingData['usage_status']}",
+                'is_active' => true,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+
+            // Create main user
+            $defaultRole = DB::selectOne("SELECT id FROM shulesoft.connect_roles WHERE name = 'Administrator' LIMIT 1");
+            $roleId = $defaultRole ? $defaultRole->id : 1;
+
+            $userId = DB::table('shulesoft.connect_users')->insertGetId([
+                'name' => $onboardingData['contact_name'],
+                'email' => $onboardingData['contact_email'],
+                'password' => Hash::make($onboardingData['password']),
+                'phone' => $onboardingData['contact_phone'],
+                'role_id' => $roleId,
+                'connect_organization_id' => $organizationId,
+                'status' => 'active',
+                'email_verified_at' => now(),
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+
+            // Process schools based on usage status
+            $this->processSchoolsByUsageStatus($onboardingData, $organizationId, $userId);
+
+            // Send notifications
+            $this->sendOnboardingNotifications($onboardingData, $organizationId);
+
+            DB::commit();
+
+            // Clear session data
+            session()->forget('onboarding_data');
+
+            return redirect()->route('onboarding.success')->with('success', 'Account created successfully!');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Onboarding error: ' . $e->getMessage());
+            return back()->with('error', 'An error occurred. Please try again.');
+        }
+    }
+
+    /**
+     * Success page
+     */
+    public function onboardingSuccess()
+    {
+        return view('onboarding.success');
     }
 }

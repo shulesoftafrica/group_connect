@@ -109,7 +109,7 @@
                 </div>
 
                 <!-- School Management -->
-                <div class="col-lg-3 col-md-6 mb-3">
+                <!-- <div class="col-lg-3 col-md-6 mb-3">
                     <div class="card h-100 shadow-sm hover-card">
                         <div class="card-body text-center">
                             <div class="mb-3">
@@ -122,7 +122,7 @@
                             </a>
                         </div>
                     </div>
-                </div>
+                </div> -->
 
                 <!-- Academic Years -->
                 <!-- <div class="col-lg-3 col-md-6 mb-3">

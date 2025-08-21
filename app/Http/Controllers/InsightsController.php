@@ -8,18 +8,34 @@ use App\Models\School;
 use App\Models\User;
 use App\Models\Organization;
 use Illuminate\Support\Facades\Auth;
+use App\Services\SqlGeneratorService;
+use App\Services\DataSummarizerService;
+use App\Services\OpenAIService;
 
 class InsightsController extends Controller
 {
     /**
      * Main configurations
      */
-
     CONST FREE_TIER_LIMIT = 30;
     CONST PREMIUM_TIER_LIMIT = 300;
-    CONST AI_MODEL = 'gpt-4o-mini';
+    CONST AI_MODEL =  'gpt-4o-mini';
     CONST isFreeTier = true;
     CONST requires_upgrade = TRUE;
+    
+    /**
+     * AI Services
+     */
+    protected $sqlGenerator;
+    protected $dataSummarizer;
+    protected $openAIService;
+    
+    public function __construct(SqlGeneratorService $sqlGenerator, DataSummarizerService $dataSummarizer, OpenAIService $openAIService)
+    {
+        $this->sqlGenerator = $sqlGenerator;
+        $this->dataSummarizer = $dataSummarizer;
+        $this->openAIService = $openAIService;
+    }
     /**
      * Main Insights Dashboard - Executive Command Center
      */
@@ -190,34 +206,94 @@ class InsightsController extends Controller
     }
 
     /**
-     * Process query with AI Agent using Laravel MCP
+     * Process query with AI Agent using Three-Step Pipeline
+     * Step 1: Generate SQL Query
+     * Step 2: Execute SQL safely 
+     * Step 3: Summarize results with AI
      */
     private function processWithAIAgent($query, $conversationHistory = [])
     {
         try {
-            // Use Laravel MCP to process the query with database context
+            // Build database context for both services
             $context = $this->buildDatabaseContext();
-            $systemPrompt = $this->buildSystemPrompt($context);
             
-            // Create conversation with history
-            $messages = [];
-            foreach ($conversationHistory as $msg) {
-                $messages[] = [
-                    'role' => $msg['role'] ?? 'user',
-                    'content' => $msg['content'] ?? ''
-                ];
-            }
-            $messages[] = ['role' => 'user', 'content' => $query];
+            \Log::info('AI Pipeline - Starting three-step process', [
+                'query' => $query,
+                'context_schools' => $context['school']->pluck('schema')->toArray()
+            ]);
             
-            // Process with AI using Laravel MCP
-            $aiResponse = $this->callAIWithMCP($systemPrompt, $messages);
+            // STEP 1: Generate SQL Query using SqlGeneratorService
+            $schema = [
+                'current_schools' => $context['school']->pluck('schema')->toArray(),
+                'tables' => $context['tables'],
+                'stats' => $context['current_stats']
+            ];
             
-            // Parse and structure the response
-            return $this->structureAIResponse($aiResponse, $query);
+            $sqlQuery = $this->sqlGenerator->generateQuery($query, $schema);
+            
+            \Log::info('AI Pipeline - Step 1 Complete: SQL Generated', ['sql' => $sqlQuery]);
+            
+            // STEP 2: Safely execute SQL against database
+            $queryResult = $this->executeSqlQuery($sqlQuery);
+            
+            \Log::info('AI Pipeline - Step 2 Complete: SQL Executed', [
+                'result_count' => is_array($queryResult) ? count($queryResult) : 1,
+                'result_preview' => is_array($queryResult) ? array_slice($queryResult, 0, 3) : $queryResult
+            ]);
+            
+            // STEP 3: Summarize data using DataSummarizerService
+            $structuredResponse = $this->dataSummarizer->summarizeData($query, $queryResult);
+            
+            \Log::info('AI Pipeline - Step 3 Complete: Data Summarized', [
+                'response_type' => $structuredResponse['type'],
+                'has_recommendations' => isset($structuredResponse['recommendations'])
+            ]);
+            
+            return $structuredResponse;
             
         } catch (\Exception $e) {
-            \Log::error('AI Agent Processing Error: ' . $e->getMessage());
+            \Log::error('AI Pipeline Error', [
+                'query' => $query,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return $this->getFallbackResponse($query);
+        }
+    }
+    
+    /**
+     * Safely execute SQL query against database
+     * Validates security and executes read-only queries
+     */
+    private function executeSqlQuery(string $sqlQuery)
+    {
+        try {
+            // Validate SQL safety using the SqlGeneratorService
+            if (!$this->sqlGenerator->validateSqlSafety($sqlQuery)) {
+                throw new \Exception('SQL query failed security validation');
+            }
+            
+            \Log::info('SQL Execution - Validated Query', ['sql' => $sqlQuery]);
+            
+            // Execute the query
+            $result = \DB::select($sqlQuery);
+            
+            \Log::info('SQL Execution - Query Result', [
+                'row_count' => count($result),
+                'first_row' => count($result) > 0 ? $result[0] : null
+            ]);
+            
+            return $result;
+            
+        } catch (\Exception $e) {
+            \Log::error('SQL Execution Error', [
+                'sql' => $sqlQuery,
+                'error' => $e->getMessage()
+            ]);
+            
+            // Return empty result on error to allow graceful handling
+            return [];
         }
     }
     
@@ -227,42 +303,50 @@ class InsightsController extends Controller
     private function buildDatabaseContext()
     {
         $currentSchool = $this->getCurrentSchool();
-        
+      
         // Get schema information
         $tables = [
-            'students' => 'Contains student enrollment data with fields: student_id, name, dob, sex, email, phone, address, classesID, sectionID, roll, create_date, photo, year, username, password, usertype, created_at, academic_year_id, status, health, health_other, status_id, religion_id, updated_at, city_id, health_condition_id, parent_type_id, health_insurance_id, physical_condition_id, birth_certificate_number, distance_from_school , is_hostel, tribe, denomination, schema_name',
+            'student' => 'Contains student enrollment data with fields: student_id, name, dob, sex, email, phone, address, classesID, sectionID, roll, create_date, photo, usertype, created_at,  status, health, health_other, status_id, religion_id, updated_at, city_id, health_condition_id, parent_type_id, health_insurance_id, physical_condition_id,  distance_from_school , is_hostel, tribe, denomination, schema_name',
             'payments' => 'Contains payment records with fields: id, student_id, amount, payment_type_id, date, transaction_id, created_at, cheque_number, bank_account_id, payer_name, mobile_transaction_id, transaction_time, account_number, token, reconciled, receipt_code, updated_at, channel, amount_entered, note, invoice_id, status, priority, comment,  schema_name, refer_expense_id',
             'fees' => 'Contains fee structure with fields: id, name, priority, created_at, updated_at, description, schema_name',
-            'setting' => 'Contains school information with fields: settingID, sname, name, phone, address, email, sid, currency_code, currency_symbol, footer, photo, username, password, usertype,created_at, pass_mark, website, academic_year_id, motto, sms_enabled, email_enabled,  registration_number,  updated_at, region, country_id, schema_name',
+            'setting' => 'Contains school information with fields: settingID, sname, name, phone, address, email, sid, currency_code, currency_symbol, footer, photo,  usertype,created_at, pass_mark, website,motto, sms_enabled, email_enabled,  registration_number,  updated_at, region, country_id, schema_name',
             'expenses' => 'Contains expense records with fields: id, uid, uuid, refer_expense_id, account_id, category, transaction_id, reference, amount, vendor_id, created_by_sid, note, reconciled, number, date, created_at, updated_at, schema_name, voucher, user_sid, user_name, user_phone, salary_ids',
             'revenues' => 'Contains revenue tracking with fields: id, payer_name, payer_phone, payer_email, refer_expense_id, amount, created_by_id, created_by_table, created_at, updated_at, payment_method, transaction_id, bank_account_id, invoice_number, note, date, user_in_shulesoft, user_id, user_table, reconciled, number, status, reference, schema_name',
-            'invoices' => 'Contains invoice data with fields: id, reference, student_id, created_at, sync, return_message, push_status, date, updated_at, academic_year_id, prefix, due_date, sid, token, source, status, schema_name, prefix_index',
+            'invoices' => 'Contains invoice data with fields: id, reference, student_id, created_at, sync, return_message, push_status, date, updated_at, prefix, due_date, sid, token, source, status, schema_name, prefix_index',
             'sattendances' => 'Contains attendance records with fields: id, student_id, created_by, created_by_table, date, present, absent_reason, absent_reason_id, created_at, updated_at, timeout, schema_name'
         ];
         
         // Get recent statistics using actual database queries
         try {
             $stats = [
-                'total_students' => \DB::table('students')->count(),
+                'total_students' => \DB::table('student')
+                    ->whereIn('schema_name', $this->getCurrentSchool()->pluck('schema')->toArray())
+                    ->count(),
                 'total_payments_this_month' => \DB::table('payments')
-                    ->whereMonth('payment_date', now()->month)
-                    ->whereYear('payment_date', now()->year)
+                 ->whereIn('schema_name', $this->getCurrentSchool()->pluck('schema')->toArray())
+                    ->whereMonth('date', now()->month)
+                    ->whereYear('date', now()->year)
                     ->sum('amount'),
-                'pending_fees' => \DB::table('invoices')
-                    ->where('status', 'pending')
+                'pending_fees' => \DB::table('material_invoice_balance')
+                ->whereIn('schema_name', $this->getCurrentSchool()->pluck('schema')->toArray())
+                    ->sum('amount')-\DB::table('payments')
+                 ->whereIn('schema_name', $this->getCurrentSchool()->pluck('schema')->toArray())
+                    ->whereMonth('date', now()->month)
+                    ->whereYear('date', now()->year)
                     ->sum('amount'),
                 'expenses_this_month' => \DB::table('expenses')
-                    ->whereMonth('expense_date', now()->month)
-                    ->whereYear('expense_date', now()->year)
+                    ->whereIn('schema_name', $this->getCurrentSchool()->pluck('schema')->toArray())
+                    ->whereMonth('date', now()->month)
+                    ->whereYear('date', now()->year)
                     ->sum('amount')
             ];
         } catch (\Exception $e) {
             // Fallback to sample data if database queries fail
             $stats = [
-                'total_students' => 1250,
-                'total_payments_this_month' => 450000,
-                'pending_fees' => 85000,
-                'expenses_this_month' => 125000
+                'total_students' => 0,
+                'total_payments_this_month' => 0,
+                'pending_fees' => 0,
+                'expenses_this_month' => 0
             ];
         }
         
@@ -283,7 +367,7 @@ class InsightsController extends Controller
      */
 private function buildSystemPrompt($context)
 {
-    $schoolNames = $context['school']->pluck('name')->toArray();
+    $schoolNames = $context['school']->pluck('schema')->toArray();
     $schoolNameList = implode(', ', $schoolNames);
 
     // Build SQL schema filter for single or multiple schools
@@ -295,18 +379,22 @@ private function buildSystemPrompt($context)
     $currentStats = json_encode($context['current_stats'] ?? []);
     $dateContext = json_encode($context['date_context'] ?? []);
 
+    $query = request('query');
+
     return <<<PROMPT
-You are ShuleSoft AI, an intelligent assistant for {$schoolNameList} school management system. 
+You are ShuleSoft AI, an intelligent assistant for an owner who manages many schools under one management system. 
+
+You are required to generate a PostgreSQL SQL statement to get the information and other results as per the response format rules to {$query}
+  
 
 DATABASE CONTEXT:
 - Current School(s): {$schoolNameList}
 - Available Tables: {$tables}
-- Current Statistics: {$currentStats}
-- Date Context: {$dateContext}
+
 
 ROLE:
 - You are a data intelligence assistant specialized in this school database.
-- Your task is to translate natural language into SQL queries, scoped to the school(s) above, and return insights in a user-friendly format.
+- Your task is to create SQL queries, scoped to the school(s) above, and return insights that a non-technical user can easily understand.
 
 SQL RULES:
 - Every SQL query must include this filter: {$schemaFilter}.
@@ -316,17 +404,18 @@ SQL RULES:
 
 DATA GROUNDING:
 - Do not invent numbers, categories, or tables.
-- If data is missing from the context, say: "This information is not available in the provided database context."
+- If SQL cannot be created from the existing database context, return "This information is not available in the ShuleSoft system."
 - Summaries and insights must always be based on SQL query results.
 
 RESPONSE FORMAT RULES:
 - Respond with JSON that contains user-friendly text, not raw technical data.
 - NEVER show SQL queries to the user.
 - NEVER show raw JSON structures to the user.
-- Always provide clear, readable explanations.
+- Always provide clear, readable  non-technical explanations that an ordinary user can understand
 - JSON must strictly follow this structure:
 {
     "type": "text|table|chart|kpi",
+    "sql_query": " only a single SQL, clear, formatted PostgreSQL database query to return information based on the database context",
     "data": {
         "summary": "A clear, user-friendly summary in plain English",
         "details": "Detailed explanation in conversational language",
@@ -334,7 +423,7 @@ RESPONSE FORMAT RULES:
         "tables": [...],
         "kpis": [...]
     },
-    "recommendations": ["Clear actionable recommendations in plain English"]
+    "recommendations": ["Clear actionable recommendations in NON TECHNICAL plain English"]
 }
 
 COMMUNICATION STYLE:
@@ -369,7 +458,7 @@ PROMPT;
     {
         // Use Laravel MCP for AI processing
         $config = [
-            'model' => 'gpt-4o-mini',
+            'model' => self::AI_MODEL,
             'temperature' => 0.3,
             'max_tokens' => 2000
         ];
@@ -379,7 +468,7 @@ PROMPT;
             ['role' => 'system', 'content' => $systemPrompt]
         ];
         $conversation = array_merge($conversation, $messages);
-        
+    
         // Call AI service using configured endpoint
         try {
             // Check if OpenAI key is configured
@@ -411,11 +500,13 @@ PROMPT;
             ]);
 
             // Debug response if needed
-            // \Log::info('OpenAI Response Status: ' . $response->status());
+             \Log::info('OpenAI Response Status: ' . json_encode($conversation));
             // \Log::info('OpenAI Response Body: ' . $response->body());
+   
 
             if ($response->successful()) {
                 $data = $response->json();
+                \Log::error('MCP AI Call successful results: ' . json_encode($data));
                 return $data['choices'][0]['message']['content'] ?? '';
             } else {
                 throw new \Exception('AI service error: ' . $response->status() . ' - ' . $response->body());
@@ -435,9 +526,11 @@ PROMPT;
         try {
             // Try to parse JSON response from AI
             $decoded = json_decode($aiResponse, true);
+            \Log::error('MCP structure ai response: ' . json_encode($decoded));
             
             if (json_last_error() === JSON_ERROR_NONE && isset($decoded['type'])) {
-                // AI returned structured JSON - ensure user-friendly formatting
+                // AI returned structured JSON - execute SQL and get real data
+                $decoded = $this->executeAIQuery($decoded);
                 $decoded = $this->ensureUserFriendlyFormat($decoded);
                 return $decoded;
             } else {
@@ -458,16 +551,259 @@ PROMPT;
             return $this->getFallbackResponse($originalQuery);
         }
     }
+
+    /**
+     * Execute the SQL query from AI response and replace with real data
+     */
+    private function executeAIQuery($decoded)
+    {
+        try {
+            // Check if AI provided a SQL query
+            if (!isset($decoded['sql_query']) || empty($decoded['sql_query'])) {
+                return $decoded; // No SQL to execute, return as is
+            }
+
+            $sqlQuery = $decoded['sql_query'];
+            
+            // Validate SQL query for security
+            if (!$this->isValidReadOnlyQuery($sqlQuery)) {
+                \Log::warning('Potentially unsafe SQL query blocked: ' . $sqlQuery);
+                unset($decoded['sql_query']);
+                return $decoded;
+            }
+
+            \Log::info('Executing AI Generated SQL: ' . $sqlQuery);
+
+            // Execute the SQL query
+            $results = DB::select($sqlQuery);
+            
+            if (empty($results)) {
+                \Log::warning('SQL query returned no results: ' . $sqlQuery);
+                return $decoded; // Return original AI response if no results
+            }
+
+            $firstResult = $results[0];
+            
+            // Update the response with real data based on query type
+            if (isset($decoded['type'])) {
+                switch ($decoded['type']) {
+                    case 'kpi':
+                        $decoded = $this->updateKPIWithRealData($decoded, $firstResult);
+                        break;
+                    case 'table':
+                        $decoded = $this->updateTableWithRealData($decoded, $results);
+                        break;
+                    case 'chart':
+                        $decoded = $this->updateChartWithRealData($decoded, $results);
+                        break;
+                    default:
+                        // For text responses, update summary and details
+                        $decoded = $this->updateTextWithRealData($decoded, $firstResult);
+                        break;
+                }
+            }
+
+            // Remove SQL query from response (security)
+            unset($decoded['sql_query']);
+            
+            return $decoded;
+
+        } catch (\Exception $e) {
+            \Log::error('SQL Execution Error: ' . $e->getMessage() . ' | SQL: ' . ($sqlQuery ?? 'N/A'));
+            // Return original AI response if SQL execution fails
+            unset($decoded['sql_query']); // Remove SQL for security
+            return $decoded;
+        }
+    }
+
+    /**
+     * Validate that SQL query is safe (read-only)
+     */
+    private function isValidReadOnlyQuery($sql)
+    {
+        $sql = strtoupper(trim($sql));
+        
+        // Must start with SELECT
+        if (!str_starts_with($sql, 'SELECT')) {
+            return false;
+        }
+        
+        // Block dangerous keywords
+        $dangerousKeywords = [
+            'INSERT', 'UPDATE', 'DELETE', 'DROP', 'CREATE', 'ALTER', 
+            'TRUNCATE', 'REPLACE', 'MERGE', 'CALL', 'EXEC', 'EXECUTE',
+            'GRANT', 'REVOKE', 'COMMIT', 'ROLLBACK', 'SAVEPOINT',
+            'LOCK', 'UNLOCK', 'SET', 'DECLARE'
+        ];
+        
+        foreach ($dangerousKeywords as $keyword) {
+            if (strpos($sql, $keyword) !== false) {
+                return false;
+            }
+        }
+        
+        // Must contain schema filter for security
+        $requiredSchemas = $this->getCurrentSchool()->pluck('schema')->toArray();
+        $schemaFilter = "schema_name IN ('" . implode("','", $requiredSchemas) . "')";
+        
+        if (strpos($sql, 'schema_name IN') === false) {
+            \Log::warning('SQL query missing required schema filter: ' . $sql);
+            return false;
+        }
+        
+        return true;
+    }
+
+    /**
+     * Update KPI response with real database data
+     */
+    private function updateKPIWithRealData($decoded, $result)
+    {
+        $value = null;
+        
+        // Get the first numeric value from the result
+        foreach ($result as $key => $val) {
+            if (is_numeric($val)) {
+                $value = $val;
+                break;
+            }
+        }
+
+        if ($value !== null) {
+            // Update summary and details with real numbers
+            $formattedValue = $this->formatNumber($value);
+            
+            if (isset($decoded['data']['summary'])) {
+                // Replace any numbers in summary with real data
+                $decoded['data']['summary'] = preg_replace('/[\d,]+/', number_format($value), $decoded['data']['summary']);
+                $decoded['data']['summary'] = str_replace(['Tsh 1,100', 'Tsh 1,200', 'Tsh 450,000', 'Tsh 1,200,000'], 'Tsh ' . number_format($value), $decoded['data']['summary']);
+            }
+
+            if (isset($decoded['data']['details'])) {
+                // Replace any numbers in details with real data
+                $decoded['data']['details'] = preg_replace('/[\d,]+/', number_format($value), $decoded['data']['details']);
+                $decoded['data']['details'] = str_replace(['1,100', '1,200', '450,000', '1,200,000'], number_format($value), $decoded['data']['details']);
+            }
+
+            // Update KPIs array
+            if (isset($decoded['data']['kpis']) && is_array($decoded['data']['kpis'])) {
+                foreach ($decoded['data']['kpis'] as &$kpi) {
+                    if (isset($kpi['value'])) {
+                        // Check if it's a monetary value
+                        if (strpos($kpi['value'], 'Tsh') !== false) {
+                            $kpi['value'] = 'Tsh ' . number_format($value);
+                        } else {
+                            $kpi['value'] = number_format($value);
+                        }
+                    }
+                }
+            }
+        }
+
+        return $decoded;
+    }
+
+    /**
+     * Update table response with real database data
+     */
+    private function updateTableWithRealData($decoded, $results)
+    {
+        if (isset($decoded['data']['tables']) && is_array($decoded['data']['tables'])) {
+            // Convert database results to table format
+            $tableData = [];
+            foreach ($results as $row) {
+                $tableRow = [];
+                foreach ($row as $key => $value) {
+                    $tableRow[] = is_numeric($value) ? number_format($value) : $value;
+                }
+                $tableData[] = $tableRow;
+            }
+            
+            // Update the first table with real data
+            if (!empty($decoded['data']['tables'])) {
+                $decoded['data']['tables'][0]['data'] = $tableData;
+            }
+        }
+
+        return $decoded;
+    }
+
+    /**
+     * Update chart response with real database data
+     */
+    private function updateChartWithRealData($decoded, $results)
+    {
+        if (isset($decoded['data']['charts']) && is_array($decoded['data']['charts'])) {
+            // Convert database results to chart format
+            $chartData = [];
+            foreach ($results as $row) {
+                $chartItem = [];
+                foreach ($row as $key => $value) {
+                    $chartItem[$key] = $value;
+                }
+                $chartData[] = $chartItem;
+            }
+            
+            // Update the first chart with real data
+            if (!empty($decoded['data']['charts'])) {
+                $decoded['data']['charts'][0]['data'] = $chartData;
+            }
+        }
+
+        return $decoded;
+    }
+
+    /**
+     * Update text response with real database data
+     */
+    private function updateTextWithRealData($decoded, $result)
+    {
+        $value = null;
+        
+        // Get the first numeric value from the result
+        foreach ($result as $key => $val) {
+            if (is_numeric($val)) {
+                $value = $val;
+                break;
+            }
+        }
+
+        if ($value !== null) {
+            // Update summary and details with real numbers
+            if (isset($decoded['data']['summary'])) {
+                $decoded['data']['summary'] = preg_replace('/[\d,]+/', number_format($value), $decoded['data']['summary']);
+            }
+
+            if (isset($decoded['data']['details'])) {
+                $decoded['data']['details'] = preg_replace('/[\d,]+/', number_format($value), $decoded['data']['details']);
+            }
+        }
+
+        return $decoded;
+    }
+
+    /**
+     * Format number for display
+     */
+    private function formatNumber($number)
+    {
+        if ($number >= 1000000000) {
+            return number_format($number / 1000000000, 1) . 'B';
+        } elseif ($number >= 1000000) {
+            return number_format($number / 1000000, 1) . 'M';
+        } elseif ($number >= 1000) {
+            return number_format($number / 1000, 1) . 'K';
+        } else {
+            return number_format($number);
+        }
+    }
     
     /**
      * Ensure AI response is formatted in a user-friendly way
      */
     private function ensureUserFriendlyFormat($response)
     {
-        // Remove any SQL queries from the response
-        if (isset($response['sql_query'])) {
-            unset($response['sql_query']);
-        }
+        // NOTE: We keep sql_query for execution, it will be removed after execution
         
         // Ensure data section has user-friendly content
         if (isset($response['data'])) {

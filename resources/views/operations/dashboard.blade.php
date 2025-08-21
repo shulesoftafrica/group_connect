@@ -344,13 +344,13 @@
                         <i class="bi bi-search"></i>
                     </button>
                 </div>
-                <select class="form-select" style="width: 150px;" id="statusFilter">
+                <!-- <select class="form-select" style="width: 150px;" id="statusFilter">
                     <option value="">All Status</option>
                     <option value="excellent">Excellent</option>
                     <option value="good">Good</option>
                     <option value="average">Average</option>
                     <option value="needs_attention">Needs Attention</option>
-                </select>
+                </select> -->
             </div>
         </div>
         <div class="card-body">
@@ -394,7 +394,7 @@
                             </td>
                             <td>{{ $school['region'] }}</td>
                             <td>
-                                <span class="badge bg-light text-dark">{{ $school['type'] }}</span>
+                                <span class="badge bg-secondary me-1">{{ $school['type'] }}</span>
                             </td>
                             <td>{{ number_format($school['student_count']) }}</td>
                             <td>{{ $school['staff_count'] }}</td>
@@ -403,8 +403,8 @@
                                     <span class="me-2">{{ $school['attendance_rate'] }}%</span>
                                     <div class="progress" style="width: 60px; height: 8px;">
                                         <div class="progress-bar 
-                                            @if($school['attendance_rate'] >= 90) bg-success
-                                            @elseif($school['attendance_rate'] >= 80) bg-warning  
+                                            @if($school['attendance_rate'] >= 80 && $school['attendance_rate'] <= 100) bg-success
+                                            @elseif($school['attendance_rate'] > 50 && $school['attendance_rate'] < 80) bg-warning  
                                             @else bg-danger
                                             @endif"
                                              style="width: {{ $school['attendance_rate'] }}%">
@@ -557,107 +557,107 @@
 @push('scripts')
 <script>
 // Chart.js configurations
-const performanceData = @json($performanceData);
+// const performanceData = @json($performanceData);
 
 // Performance Trends Chart
-const trendsCtx = document.getElementById('performanceTrendsChart').getContext('2d');
-const performanceTrendsChart = new Chart(trendsCtx, {
-    type: 'line',
-    data: {
-        labels: performanceData.dates,
-        datasets: [{
-            label: 'Student Attendance (%)',
-            data: performanceData.attendance_trend,
-            borderColor: '#4e73df',
-            backgroundColor: 'rgba(78, 115, 223, 0.1)',
-            borderWidth: 2,
-            fill: true,
-            tension: 0.3
-        }, {
-            label: 'Transport Punctuality (%)',
-            data: performanceData.transport_punctuality,
-            borderColor: '#1cc88a',
-            backgroundColor: 'rgba(28, 200, 138, 0.1)',
-            borderWidth: 2,
-            fill: true,
-            tension: 0.3
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                position: 'top',
-            }
-        },
-        scales: {
-            y: {
-                beginAtZero: false,
-                min: 70,
-                max: 100,
-                ticks: {
-                    callback: function(value) {
-                        return value + '%';
-                    }
-                }
-            }
-        },
-        interaction: {
-            intersect: false,
-            mode: 'index'
-        }
-    }
-});
+// const trendsCtx = document.getElementById('performanceTrendsChart').getContext('2d');
+// const performanceTrendsChart = new Chart(trendsCtx, {
+//     type: 'line',
+//     data: {
+//         labels: performanceData.dates,
+//         datasets: [{
+//             label: 'Student Attendance (%)',
+//             data: performanceData.attendance_trend,
+//             borderColor: '#4e73df',
+//             backgroundColor: 'rgba(78, 115, 223, 0.1)',
+//             borderWidth: 2,
+//             fill: true,
+//             tension: 0.3
+//         }, {
+//             label: 'Transport Punctuality (%)',
+//             data: performanceData.transport_punctuality,
+//             borderColor: '#1cc88a',
+//             backgroundColor: 'rgba(28, 200, 138, 0.1)',
+//             borderWidth: 2,
+//             fill: true,
+//             tension: 0.3
+//         }]
+//     },
+//     options: {
+//         responsive: true,
+//         maintainAspectRatio: false,
+//         plugins: {
+//             legend: {
+//                 position: 'top',
+//             }
+//         },
+//         scales: {
+//             y: {
+//                 beginAtZero: false,
+//                 min: 70,
+//                 max: 100,
+//                 ticks: {
+//                     callback: function(value) {
+//                         return value + '%';
+//                     }
+//                 }
+//             }
+//         },
+//         interaction: {
+//             intersect: false,
+//             mode: 'index'
+//         }
+//     }
+// });
 
 // Regional Performance Chart
-const regionalCtx = document.getElementById('regionalPerformanceChart').getContext('2d');
-const regionalChart = new Chart(regionalCtx, {
-    type: 'bar',
-    data: {
-        labels: Object.keys(performanceData.regional_performance),
-        datasets: [{
-            label: 'Operational Performance (%)',
-            data: Object.values(performanceData.regional_performance),
-            backgroundColor: [
-                'rgba(78, 115, 223, 0.8)',
-                'rgba(28, 200, 138, 0.8)',
-                'rgba(54, 185, 204, 0.8)',
-                'rgba(246, 194, 62, 0.8)',
-                'rgba(231, 74, 59, 0.8)'
-            ],
-            borderColor: [
-                '#4e73df',
-                '#1cc88a',
-                '#36b9cc',
-                '#f6c23e',
-                '#e74a3b'
-            ],
-            borderWidth: 1
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                display: false
-            }
-        },
-        scales: {
-            y: {
-                beginAtZero: false,
-                min: 70,
-                max: 100,
-                ticks: {
-                    callback: function(value) {
-                        return value + '%';
-                    }
-                }
-            }
-        }
-    }
-});
+// const regionalCtx = document.getElementById('regionalPerformanceChart').getContext('2d');
+// const regionalChart = new Chart(regionalCtx, {
+//     type: 'bar',
+//     data: {
+//         labels: Object.keys(performanceData.regional_performance),
+//         datasets: [{
+//             label: 'Operational Performance (%)',
+//             data: Object.values(performanceData.regional_performance),
+//             backgroundColor: [
+//                 'rgba(78, 115, 223, 0.8)',
+//                 'rgba(28, 200, 138, 0.8)',
+//                 'rgba(54, 185, 204, 0.8)',
+//                 'rgba(246, 194, 62, 0.8)',
+//                 'rgba(231, 74, 59, 0.8)'
+//             ],
+//             borderColor: [
+//                 '#4e73df',
+//                 '#1cc88a',
+//                 '#36b9cc',
+//                 '#f6c23e',
+//                 '#e74a3b'
+//             ],
+//             borderWidth: 1
+//         }]
+//     },
+//     options: {
+//         responsive: true,
+//         maintainAspectRatio: false,
+//         plugins: {
+//             legend: {
+//                 display: false
+//             }
+//         },
+//         scales: {
+//             y: {
+//                 beginAtZero: false,
+//                 min: 70,
+//                 max: 100,
+//                 ticks: {
+//                     callback: function(value) {
+//                         return value + '%';
+//                     }
+//                 }
+//             }
+//         }
+//     }
+// });
 
 // Dashboard Functions
 function refreshDashboard() {

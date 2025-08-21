@@ -1013,7 +1013,7 @@
                     <button class="btn btn-outline-primary me-2" data-bs-toggle="modal" data-bs-target="#loginModal">
                         Login
                     </button>
-                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#onboardingWizard">Start Free Trial</button>
+                    <a class="btn btn-primary" href="{{ route('onboarding.start') }}">Start Free Trial</a>
                 </div>
             </div>
         </div>
@@ -1028,9 +1028,9 @@
                     <p class="lead fade-in">AI-powered insights to help school owners make faster, smarter decisions across multiple institutions.</p>
                     
                     <div class="fade-in">
-                        <button class="btn btn-primary btn-lg me-3" data-bs-toggle="modal" data-bs-target="#onboardingWizard">
+                        <a class="btn btn-primary btn-lg me-3"  href="{{ route('onboarding.start') }}">
                             <i class="fas fa-rocket me-2"></i>Start Free Trial
-                        </button>
+    </a>
                         <a href="#demo" class="btn btn-outline-primary btn-lg">
                             <i class="fas fa-play me-2"></i>Request Demo
                         </a>
@@ -1139,9 +1139,9 @@
                 <p class="lead fade-in mb-4">Join hundreds of school owners who trust ShuleSoft Group Connect</p>
                 
                 <div class="fade-in">
-                    <button class="btn btn-light btn-lg me-3" data-bs-toggle="modal" data-bs-target="#onboardingWizard">
+                    <a class="btn btn-light btn-lg me-3" href="{{ route('onboarding.start') }}">
                         <i class="fas fa-calendar-check me-2"></i>Start 14-Day Free Trial
-                    </button>
+    </a>
                     <a href="#demo" class="btn btn-outline-light btn-lg">
                         <i class="fas fa-eye me-2"></i>See Live Demo
                     </a>
@@ -1545,9 +1545,12 @@
                         
                         <div class="text-center">
                             <p class="mb-2">Don't have an account?</p>
-                            <a href="#signup" class="btn btn-outline-primary w-100">
+                            <a href="{{ route('onboarding.start') }}" class="btn btn-outline-primary w-100">
                                 <i class="fas fa-user-plus me-2"></i>Sign Up for Free Trial
                             </a>
+                            <small class="text-muted d-block mt-2">
+                                Join the ShuleSoft Group Connect network
+                            </small>
                         </div>
                     </form>
                 </div>

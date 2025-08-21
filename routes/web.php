@@ -23,7 +23,19 @@ Route::get('/user-guide', function () {
     return view('user-guide.index');
 })->name('user-guide');
 
-// Onboarding Route (for new organization registration)
+// Onboarding Routes (Multi-page system)
+Route::get('/onboarding', [SettingsController::class, 'onboardingStart'])->name('onboarding.start');
+Route::get('/onboarding/step1', [SettingsController::class, 'onboardingStep1'])->name('onboarding.step1');
+Route::post('/onboarding/step1', [SettingsController::class, 'saveStep1'])->name('onboarding.save-step1');
+Route::get('/onboarding/step2', [SettingsController::class, 'onboardingStep2'])->name('onboarding.step2');
+Route::post('/onboarding/step2', [SettingsController::class, 'saveStep2'])->name('onboarding.save-step2');
+Route::get('/onboarding/step3', [SettingsController::class, 'onboardingStep3'])->name('onboarding.step3');
+Route::post('/onboarding/step3', [SettingsController::class, 'saveStep3'])->name('onboarding.save-step3');
+Route::get('/onboarding/step4', [SettingsController::class, 'onboardingStep4'])->name('onboarding.step4');
+Route::post('/onboarding/step4', [SettingsController::class, 'completeOnboarding'])->name('onboarding.complete');
+Route::get('/onboarding/success', [SettingsController::class, 'onboardingSuccess'])->name('onboarding.success');
+
+// Legacy onboarding route (keep for now)
 Route::post('/onboarding/submit', [SettingsController::class, 'submitOnboarding'])->name('onboarding.submit');
 Route::post('/settings/validate-login-code', [SettingsController::class, 'validateLoginCode'])->name('settings.validate-login-code');
 Route::middleware(['auth', 'verified'])->group(function () {

@@ -810,7 +810,7 @@
                 <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('reports.*') ? 'active' : '' }}" href="{{ route('insights.dashboard') }}">
                         <i class="bi bi-graph-up me-2"></i>
-                        Reports & Insights
+                      AI Reports & Insights
                     </a>
                 </li>
                 @endif
@@ -841,12 +841,12 @@
                         <i class="bi bi-people-fill me-2"></i>User Management
                     </a>
                 </li>
-                <li class="nav-item">
+                <!-- <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('settings.schools') ? 'active' : '' }}" 
                        href="{{ route('settings.schools') }}">
                         <i class="bi bi-building-fill me-2"></i>School Management
                     </a>
-                </li>
+                </li> -->
                 <!-- <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('settings.academic-years') ? 'active' : '' }}" 
                        href="{{ route('settings.academic-years') }}">
