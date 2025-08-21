@@ -296,7 +296,7 @@ private function buildSystemPrompt($context)
     $dateContext = json_encode($context['date_context'] ?? []);
 
     return <<<PROMPT
-You are ShuleSoftAI, an intelligent assistant for {$schoolNameList} school management system. 
+You are ShuleSoft AI, an intelligent assistant for {$schoolNameList} school management system. 
 
 DATABASE CONTEXT:
 - Current School(s): {$schoolNameList}
@@ -306,7 +306,7 @@ DATABASE CONTEXT:
 
 ROLE:
 - You are a data intelligence assistant specialized in this school database.
-- Your task is to translate natural language into SQL queries, scoped to the school(s) above, and return insights in JSON format.
+- Your task is to translate natural language into SQL queries, scoped to the school(s) above, and return insights in a user-friendly format.
 
 SQL RULES:
 - Every SQL query must include this filter: {$schemaFilter}.
@@ -320,20 +320,29 @@ DATA GROUNDING:
 - Summaries and insights must always be based on SQL query results.
 
 RESPONSE FORMAT RULES:
-- Respond with raw JSON only (no markdown, no text before or after).
+- Respond with JSON that contains user-friendly text, not raw technical data.
+- NEVER show SQL queries to the user.
+- NEVER show raw JSON structures to the user.
+- Always provide clear, readable explanations.
 - JSON must strictly follow this structure:
 {
     "type": "text|table|chart|kpi",
     "data": {
-        "summary": "...",
-        "details": "...",
+        "summary": "A clear, user-friendly summary in plain English",
+        "details": "Detailed explanation in conversational language",
         "charts": [...],
         "tables": [...],
         "kpis": [...]
     },
-    "recommendations": ["..."],
-    "sql_query": "..."
+    "recommendations": ["Clear actionable recommendations in plain English"]
 }
+
+COMMUNICATION STYLE:
+- Use clear, professional language
+- Explain financial figures in context (e.g., "Total revenue this month is Tsh 450,000")
+- Provide insights, not just numbers
+- Be conversational but authoritative
+- Focus on actionable insights
 
 CAPABILITIES:
 - Analyze student enrollment trends
@@ -348,8 +357,7 @@ IMPORTANT:
 - Always ground responses in actual database data.
 - Provide specific numbers and trends when available.
 - Include actionable recommendations.
-- Be concise but comprehensive.
-- Always apply the schema filter in every SQL query.
+- Never expose technical details like SQL queries to users.
 PROMPT;
 }
 
@@ -429,7 +437,8 @@ PROMPT;
             $decoded = json_decode($aiResponse, true);
             
             if (json_last_error() === JSON_ERROR_NONE && isset($decoded['type'])) {
-                // AI returned structured JSON
+                // AI returned structured JSON - ensure user-friendly formatting
+                $decoded = $this->ensureUserFriendlyFormat($decoded);
                 return $decoded;
             } else {
                 // AI returned text, structure it
@@ -437,7 +446,7 @@ PROMPT;
                     'type' => 'text',
                     'data' => [
                         'summary' => $this->extractSummary($aiResponse),
-                        'details' => $aiResponse
+                        'details' => $this->formatResponseForDisplay($aiResponse)
                     ],
                     'recommendations' => $this->extractRecommendations($aiResponse),
                     'query_intent' => $this->detectQueryIntent($originalQuery)
@@ -448,6 +457,57 @@ PROMPT;
             \Log::error('Response Structuring Error: ' . $e->getMessage());
             return $this->getFallbackResponse($originalQuery);
         }
+    }
+    
+    /**
+     * Ensure AI response is formatted in a user-friendly way
+     */
+    private function ensureUserFriendlyFormat($response)
+    {
+        // Remove any SQL queries from the response
+        if (isset($response['sql_query'])) {
+            unset($response['sql_query']);
+        }
+        
+        // Ensure data section has user-friendly content
+        if (isset($response['data'])) {
+            if (isset($response['data']['summary'])) {
+                $response['data']['summary'] = $this->formatResponseForDisplay($response['data']['summary']);
+            }
+            if (isset($response['data']['details'])) {
+                $response['data']['details'] = $this->formatResponseForDisplay($response['data']['details']);
+            }
+        }
+        
+        // Ensure recommendations are user-friendly
+        if (isset($response['recommendations']) && is_array($response['recommendations'])) {
+            $response['recommendations'] = array_map(function($rec) {
+                return $this->formatResponseForDisplay($rec);
+            }, $response['recommendations']);
+        }
+        
+        return $response;
+    }
+    
+    /**
+     * Format response text to be user-friendly
+     */
+    private function formatResponseForDisplay($text)
+    {
+        // Remove any JSON-like structures that might have leaked through
+        $text = preg_replace('/\{[^}]*"[^"]*"[^}]*\}/', '', $text);
+        
+        // Remove SQL queries
+        $text = preg_replace('/SELECT\s+.*?FROM\s+.*?(?:WHERE|GROUP|ORDER|LIMIT|;|$)/is', '', $text);
+        
+        // Clean up any remaining technical jargon
+        $text = str_replace(['json_decode', 'array(', 'stdClass', 'null', 'true', 'false'], '', $text);
+        
+        // Ensure proper formatting
+        $text = trim($text);
+        $text = preg_replace('/\s+/', ' ', $text); // Remove extra spaces
+        
+        return $text;
     }
     
     /**

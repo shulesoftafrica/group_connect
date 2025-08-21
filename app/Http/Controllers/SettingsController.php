@@ -101,6 +101,17 @@ class SettingsController extends Controller
         $pass = substr(str_shuffle('23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz'), 0, 8);
         $defaultPassword = Hash::make($pass); // Replace with the actual default password logic if needed
 
+        // Check for duplicate email in the database
+        $existingUser = DB::selectOne("
+            SELECT id FROM shulesoft.connect_users 
+            WHERE email = ? AND connect_organization_id = ?
+        ", [$request->email, Auth::user()->connect_organization_id]);
+
+        if ($existingUser) {
+            return redirect()->back()->with('error', 'A user with this email already exists.');
+        }
+
+        // Insert new user into the database
         DB::insert("
             INSERT INTO shulesoft.connect_users (name, email, password, role_id, assigned_schools, connect_organization_id, status, created_at)
             VALUES (?, ?, ?, ?, ?, ?, 'pending', NOW())
@@ -114,8 +125,8 @@ class SettingsController extends Controller
         ]);
         if (!empty($request->assigned_schools)) {
             foreach ($request->assigned_schools as $school_setting_uid) {
-                       DB::insert("
-            INSERT INTO shulesoft.connect_schools (
+            DB::statement("
+                INSERT INTO shulesoft.connect_schools (
                 school_setting_uid,
                 connect_organization_id,
                 connect_user_id,
@@ -124,21 +135,23 @@ class SettingsController extends Controller
                 settings,
                 created_by,
                 created_at
-            ) VALUES (?, ?, ?, true, ?, ?, ?, NOW())
-        ", [
-            $school_setting_uid, // school_setting_uid, set as needed
-            Auth::user()->connect_organization_id,
-            Auth::user()->id,
-            null, // shulesoft_code, set as needed
-            json_encode([]), // settings, default empty
-            Auth::user()->id
-        ]);
+                ) VALUES (?, ?, ?, true, ?, ?, ?, NOW())
+                ON CONFLICT (school_setting_uid, connect_organization_id, connect_user_id) DO NOTHING
+            ", [
+                $school_setting_uid, // school_setting_uid, set as needed
+                Auth::user()->connect_organization_id,
+                Auth::user()->id,
+                null, // shulesoft_code, set as needed
+                json_encode([]), // settings, default empty
+                Auth::user()->id
+            ]);
             }
         }
 
         // Prepare the message content
         $loginUrl = url('/login');
-       $allocatedSchool = implode(', ', $request->assigned_schools ?? []);
+       
+        $allocatedSchool = implode(', ', $request->assigned_schools ?? []);
         $message = "Dear {$request->name},\n\n" .
             "You have been registered by " . Auth::user()->name . " and allocated to the school(s): {$allocatedSchool}.\n\n" .
             "Your login URL is: {$loginUrl}\n" .
@@ -329,6 +342,32 @@ class SettingsController extends Controller
         return view('settings.schools', compact('schools'));
     }
 
+    public function validateLoginCode(Request $request)
+    {
+        $request->validate([
+            'login_code' => 'required|string'
+        ]);
+        if($request->has('login_codes')) {
+            $loginCodes = $request->input('login_codes');
+            print_r($loginCodes);
+            exit;
+        }
+        $loginCode = $request->login_code;
+
+        // Check if the code exists in shulesoft.setting table
+        $setting = DB::table('shulesoft.setting')
+            ->where('login_code', $loginCode)
+            ->first();
+
+        if ($setting) {
+            return response()->json(['valid' => true]);
+        } else {
+            return response()->json([
+                'valid' => false,
+                'message' => 'This code is not valid, school cannot be onboarded.'
+            ]);
+        }
+    }
     public function storeSchool(Request $request)
     {
         if ($request->action_type === 'link_existing') {
@@ -597,6 +636,255 @@ class SettingsController extends Controller
         }
 
         return redirect()->back()->with('success', 'Bulk operation completed successfully.');
+    }
+
+    /**
+     * Handle Onboarding Wizard Form Submission
+     */
+    public function submitOnboarding(Request $request)
+    {
+        try {
+            // Validate the incoming request
+            $validated = $request->validate([
+                'org_name' => 'required|string|max:255|regex:/^[a-zA-Z0-9\s.&\'-]+$/',
+                'org_email' => 'required|email|max:255',
+                'contact_name' => 'required|string|max:255|regex:/^[a-zA-Z\s.\'-]+$/',
+                'contact_email' => 'required|email|max:255',
+                'contact_phone' => 'required|string|regex:/^[\+]?[0-9\s\-\(\)]{10,}$/',
+                'schools_count' => 'required|integer|min:2',
+                'usage_status' => 'required|in:all,some,none',
+                'password' => 'required|string|min:8|confirmed',
+                
+                // Dynamic school data validation
+                // 'shulesoft_schools' => 'array',
+                // 'shulesoft_schools.*.login_code' => 'string|max:50',
+                // 'mixed_shulesoft_schools' => 'array',
+                // 'mixed_shulesoft_schools.*.login_code' => 'string|max:50',
+                // 'mixed_shulesoft_schools.*.school_name' => 'string|max:255',
+                // 'non_shulesoft_schools' => 'array',
+                // 'non_shulesoft_schools.*.school_name' => 'required_with:non_shulesoft_schools|string|max:255',
+                // 'non_shulesoft_schools.*.location' => 'required_with:non_shulesoft_schools|string|max:255',
+                // 'non_shulesoft_schools.*.contact_person' => 'required_with:non_shulesoft_schools|string|max:255',
+                // 'non_shulesoft_schools.*.contact_email' => 'required_with:non_shulesoft_schools|email|max:255',
+                // 'non_shulesoft_schools.*.contact_phone' => 'required_with:non_shulesoft_schools|string|max:20',
+                // 'new_schools' => 'array',
+                // 'new_schools.*.school_name' => 'required_with:new_schools|string|max:255',
+                // 'new_schools.*.location' => 'required_with:new_schools|string|max:255',
+                // 'new_schools.*.contact_person' => 'required_with:new_schools|string|max:255',
+                // 'new_schools.*.contact_email' => 'required_with:new_schools|email|max:255',
+                // 'new_schools.*.contact_phone' => 'required_with:new_schools|string|max:20',
+            ]);
+
+            DB::beginTransaction();
+
+            // 1. Create the organization with existing table structure
+            $organizationId = DB::table('shulesoft.connect_organizations')->insertGetId([
+                'username' => strtolower(str_replace(' ', '_', $validated['org_name'])) . '_' . time(),
+                'name' => $validated['org_name'],
+                'description' => "Organization created via onboarding wizard. Contact: {$validated['contact_name']} ({$validated['contact_email']}). Schools: {$validated['schools_count']}. Usage Status: {$validated['usage_status']}",
+                'is_active' => true,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+
+            // 2. Create the main user account
+            $defaultRole = DB::selectOne("SELECT id FROM shulesoft.connect_roles WHERE name = 'owner' LIMIT 1");
+            $roleId = $defaultRole ? $defaultRole->id : 1;
+
+            $userId = DB::table('shulesoft.connect_users')->insertGetId([
+                'name' => $validated['contact_name'],
+                'email' => $validated['contact_email'],
+                'password' => Hash::make($validated['password']),
+                'phone' => $validated['contact_phone'],
+                'role_id' => $roleId,
+                'connect_organization_id' => $organizationId,
+                'status' => 'active',
+                'email_verified_at' => now(),
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+
+            // 3. Process schools based on usage status
+            $this->processSchoolsByUsageStatus($validated, $organizationId, $userId);
+
+            // 4. Send welcome notifications
+            $this->sendOnboardingNotifications($validated, $organizationId);
+
+            // 5. Log the onboarding activity (if log table exists)
+            try {
+                DB::insert("
+                    INSERT INTO shulesoft.log (user_id, action, description, created_at)
+                    VALUES (?, 'onboarding_completed', ?, NOW())
+                ", [
+                    $userId,
+                    "Organization '{$validated['org_name']}' completed onboarding with {$validated['schools_count']} schools"
+                ]);
+            } catch (\Exception $e) {
+                // Log table might not exist, continue without logging
+                \Log::info('Could not log onboarding activity: ' . $e->getMessage());
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Account created successfully! Welcome to ShuleSoft Group Connect.',
+                'redirect' => route('login') . '?email=' . urlencode($validated['contact_email'])
+            ]);
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed: ' . implode(', ', $e->validator->errors()->all())
+            ], 422);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Onboarding error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred during account creation. Please try again.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Process schools based on usage status
+     */
+    private function processSchoolsByUsageStatus($validated, $organizationId, $userId)
+    {
+        switch ($validated['usage_status']) {
+            case 'all':
+                // All schools use ShuleSoft - link existing schools
+                if (!empty($validated['shulesoft_schools'])) {
+                    foreach ($validated['shulesoft_schools'] as $school) {
+                        $this->linkExistingSchool($school['login_code'], $organizationId, $userId);
+                    }
+                }
+                break;
+
+            case 'some':
+                // Mixed environment
+                if (!empty($validated['mixed_shulesoft_schools'])) {
+                    foreach ($validated['mixed_shulesoft_schools'] as $school) {
+                        if (!empty($school['login_code'])) {
+                            $this->linkExistingSchool($school['login_code'], $organizationId, $userId);
+                        } else {
+                            $this->createSchoolRequest($school, $organizationId, $userId);
+                        }
+                    }
+                }
+                break;
+
+            case 'none':
+                // No schools use ShuleSoft - create requests for all
+                if (!empty($validated['non_shulesoft_schools'])) {
+                    foreach ($validated['non_shulesoft_schools'] as $school) {
+                        $this->createSchoolRequest($school, $organizationId, $userId);
+                    }
+                }
+                if (!empty($validated['new_schools'])) {
+                    foreach ($validated['new_schools'] as $school) {
+                        $this->createSchoolRequest($school, $organizationId, $userId);
+                    }
+                }
+                break;
+        }
+    }
+
+    /**
+     * Link an existing ShuleSoft school
+     */
+    private function linkExistingSchool($loginCode, $organizationId, $userId)
+    {
+        // Check if the code exists in shulesoft.setting table
+        $setting = DB::table('shulesoft.setting')
+            ->where('login_code', $loginCode)
+            ->first();
+
+        if ($setting) {
+            // Record information in shulesoft.connect_schools
+            DB::table('shulesoft.connect_schools')->insert([
+                'school_setting_uid' => $setting->uid,
+                'connect_organization_id' => $organizationId,
+                'connect_user_id' => $userId,
+                'is_active' => true,
+                'shulesoft_code' => $loginCode,
+                'created_by' => $userId,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        } else {
+            // Log invalid code but don't fail the whole process
+            \Log::warning("Invalid school login code provided during onboarding: {$loginCode}");
+        }
+    }
+
+    /**
+     * Create a school onboarding request
+     */
+    private function createSchoolRequest($schoolData, $organizationId, $userId)
+    {
+        DB::insert("
+            INSERT INTO shulesoft.school_creation_requests 
+            (school_name, location, contact_person, contact_email, contact_phone, connect_user_id, status, requested_at, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, 'pending', NOW(), NOW())
+        ", [
+            $schoolData['school_name'] ?? '',
+            $schoolData['location'] ?? '',
+            $schoolData['contact_person'] ?? '',
+            $schoolData['contact_email'] ?? '',
+            $schoolData['contact_phone'] ?? '',
+            $userId
+        ]);
+    }
+
+    /**
+     * Send onboarding notifications
+     */
+    private function sendOnboardingNotifications($validated, $organizationId)
+    {
+        // Welcome message to the organization
+        $welcomeMessage = "Dear {$validated['contact_name']},\n\n" .
+            "Welcome to ShuleSoft Group Connect! Your organization '{$validated['org_name']}' has been successfully registered.\n\n" .
+            "Your 30-day trial has started. You can now:\n" .
+            "• Manage your school network\n" .
+            "• Add team members\n" .
+            "• Configure school settings\n" .
+            "• Access comprehensive reports\n\n" .
+            "Login URL: " . url('/login') . "\n" .
+            "Email: {$validated['contact_email']}\n\n" .
+            "Need help? Contact our support team.\n\n" .
+            "Thank you,\nShuleSoft Team";
+
+        DB::insert("
+            INSERT INTO shulesoft.sms (phone_number, body, sent_from, status, created_at)
+            VALUES (?, ?, 'email', 0, NOW()), (?, ?, 'sms', 0, NOW()), (?, ?, 'whatsapp', 0, NOW())
+        ", [
+            $validated['contact_email'], $welcomeMessage,
+            $validated['contact_phone'], $welcomeMessage,
+            $validated['contact_phone'], $welcomeMessage
+        ]);
+
+        // Notification to ShuleSoft team
+        $staffMessage = "New organization onboarded:\n\n" .
+            "Organization: {$validated['org_name']}\n" .
+            "Contact: {$validated['contact_name']}\n" .
+            "Email: {$validated['contact_email']}\n" .
+            "Phone: {$validated['contact_phone']}\n" .
+            "Schools: {$validated['schools_count']}\n" .
+            "Usage Status: {$validated['usage_status']}\n" .
+            "Trial Period: 30 days\n\n" .
+            "Please follow up for onboarding support.";
+
+        DB::insert("
+            INSERT INTO shulesoft.sms (phone_number, body, sent_from, status, created_at)
+            VALUES (?, ?, 'sms', 0, NOW()), (?, ?, 'whatsapp', 0, NOW())
+        ", [
+            '0714825469', $staffMessage,
+            '0714825469', $staffMessage
+        ]);
     }
 
     /**

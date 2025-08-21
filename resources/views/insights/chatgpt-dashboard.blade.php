@@ -1,71 +1,93 @@
 @extends('layouts.admin')
 
-@section('title', 'NeuronAI Assistant')
+@section('title', 'ShuleSoft AI Assistant')
 
-@section('page_title', 'NeuronAI Assistant')
+@section('page_title', 'ShuleSoft AI Assistant')
 
 @section('breadcrumb')
 <ol class="breadcrumb">
     <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">Dashboard</a></li>
-    <li class="breadcrumb-item active">NeuronAI Assistant</li>
+    <li class="breadcrumb-item active">ShuleSoft AI Assistant</li>
 </ol>
 @endsection
 
 @section('content')
-<div class="neuronai-interface">
+<div class="shulesoft-ai-interface">
   <!-- Dependencies -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
   <style>
-    /* ChatGPT-style Interface Styling */
-    .neuronai-interface {
-      background: #f8f9fa;
+    /* ===== SHULESOFT AI INTERFACE THEME INTEGRATION ===== */
+    /* Uses admin layout theme variables for consistent theming */
+    
+    /* ===== BASE INTERFACE STYLING ===== */
+    .shulesoft-ai-interface {
+      background: var(--bg-secondary) !important;
+      color: var(--text-primary) !important;
       min-height: 100vh;
       padding: 20px 0;
+      transition: all 0.3s ease;
     }
 
-    .chat-header {
-      background: white;
+    .shulesoft-ai-interface .chat-header {
+      background: var(--bg-primary) !important;
+      color: var(--text-primary) !important;
       padding: 15px 20px;
       border-radius: 12px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      box-shadow: var(--shadow-md);
       margin-bottom: 20px;
+      border: 1px solid var(--border-color);
+      transition: all 0.3s ease;
     }
 
-    .chat-main-container {
-      background: white;
+    .shulesoft-ai-interface .chat-header h4 {
+      color: var(--text-primary) !important;
+      margin: 0;
+    }
+
+    .shulesoft-ai-interface .chat-header small {
+      color: var(--text-secondary) !important;
+    }
+
+    .shulesoft-ai-interface .chat-main-container {
+      background: var(--bg-primary) !important;
       border-radius: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      box-shadow: var(--shadow-md);
       overflow: hidden;
       height: calc(100vh - 200px);
       display: flex;
       flex-direction: column;
+      border: 1px solid var(--border-color);
+      transition: all 0.3s ease;
     }
 
-    .chat-messages-area {
+    .shulesoft-ai-interface .chat-messages-area {
       flex: 1;
       overflow-y: auto;
       padding: 20px;
-      background: #f8f9fa;
+      background: var(--bg-primary) !important;
+      color: var(--text-primary) !important;
+      transition: all 0.3s ease;
     }
 
-    .chat-message {
+    /* ===== CHAT MESSAGE STYLING ===== */
+    .shulesoft-ai-interface .chat-message {
       display: flex;
       margin-bottom: 24px;
       animation: fadeInUp 0.3s ease;
     }
 
-    .chat-message.user {
+    .shulesoft-ai-interface .chat-message.user {
       justify-content: flex-end;
     }
 
-    .chat-message.ai {
+    .shulesoft-ai-interface .chat-message.ai {
       justify-content: flex-start;
     }
 
-    .message-avatar {
+    .shulesoft-ai-interface .message-avatar {
       width: 32px;
       height: 32px;
       border-radius: 50%;
@@ -75,14 +97,20 @@
       margin-right: 12px;
       font-size: 14px;
       flex-shrink: 0;
+      transition: all 0.3s ease;
     }
 
-    .chat-message.ai .message-avatar {
+    .shulesoft-ai-interface .chat-message.ai .message-avatar {
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
     }
 
-    .chat-message.user .message-avatar {
+    [data-theme="dark"] .shulesoft-ai-interface .chat-message.ai .message-avatar {
+      background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
+      color: white;
+    }
+
+    .shulesoft-ai-interface .chat-message.user .message-avatar {
       background: #0d6efd;
       color: white;
       margin-right: 0;
@@ -90,219 +118,255 @@
       order: 2;
     }
 
-    .message-content {
+    .shulesoft-ai-interface .message-content {
       max-width: 70%;
-      background: white;
+      background: var(--bg-tertiary) !important;
+      color: var(--text-primary) !important;
       border-radius: 18px;
       padding: 16px 20px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+      box-shadow: var(--shadow-sm);
       position: relative;
+      border: 1px solid var(--border-color);
+      transition: all 0.3s ease;
     }
 
-    .chat-message.user .message-content {
-      background: #0d6efd;
-      color: white;
+    .shulesoft-ai-interface .chat-message.user .message-content {
+      background: #0d6efd !important;
+      color: white !important;
       order: 1;
+      border-color: #0d6efd;
     }
 
-    .message-header {
+    .shulesoft-ai-interface .message-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
       margin-bottom: 8px;
       font-size: 12px;
+      color: inherit;
     }
 
-    .chat-message.user .message-header {
-      color: rgba(255,255,255,0.9);
+    .shulesoft-ai-interface .chat-message.user .message-header {
+      color: rgba(255,255,255,0.9) !important;
     }
 
-    .message-time {
-      color: #6c757d;
+    .shulesoft-ai-interface .message-time {
+      color: var(--text-muted) !important;
       font-size: 11px;
     }
 
-    .chat-message.user .message-time {
-      color: rgba(255,255,255,0.7);
+    .shulesoft-ai-interface .chat-message.user .message-time {
+      color: rgba(255,255,255,0.7) !important;
     }
 
-    .message-body {
+    .shulesoft-ai-interface .message-body {
       line-height: 1.5;
+      color: inherit;
     }
 
-    .message-body p {
+    .shulesoft-ai-interface .message-body p {
       margin-bottom: 8px;
+      color: inherit;
     }
 
-    .message-body p:last-child {
+    .shulesoft-ai-interface .message-body p:last-child {
       margin-bottom: 0;
     }
 
-    .capability-list {
+    .shulesoft-ai-interface .capability-list {
       list-style: none;
       padding: 0;
       margin: 12px 0;
     }
 
-    .capability-list li {
+    .shulesoft-ai-interface .capability-list li {
       padding: 6px 0;
       display: flex;
       align-items: center;
+      color: inherit;
     }
 
-    .capability-list i {
+    .shulesoft-ai-interface .capability-list i {
       margin-right: 8px;
       width: 16px;
     }
 
-    /* Welcome Message Special Styling */
-    .welcome-message .message-content {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
+    /* ===== WELCOME MESSAGE STYLING ===== */
+    .shulesoft-ai-interface .welcome-message .message-content {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+      color: white !important;
       max-width: 80%;
+      border-color: #667eea;
     }
 
-    .welcome-message .capability-list li {
-      color: rgba(255,255,255,0.95);
+    [data-theme="dark"] .shulesoft-ai-interface .welcome-message .message-content {
+      background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%) !important;
+      color: white !important;
     }
 
-    /* AI Response Components */
-    .ai-response-chart {
+    .shulesoft-ai-interface .welcome-message .capability-list li {
+      color: rgba(255,255,255,0.95) !important;
+    }
+
+    /* ===== AI RESPONSE COMPONENTS ===== */
+    .shulesoft-ai-interface .ai-response-chart {
       margin: 16px 0;
-      background: #f8f9fa;
+      background: var(--bg-tertiary) !important;
       border-radius: 12px;
       padding: 16px;
-      border: 1px solid #e9ecef;
+      border: 1px solid var(--border-color);
+      transition: all 0.3s ease;
     }
 
-    .ai-response-table {
+    .shulesoft-ai-interface .ai-response-table {
       margin: 16px 0;
       border-radius: 8px;
       overflow: hidden;
-      border: 1px solid #e9ecef;
+      border: 1px solid var(--border-color);
+      transition: all 0.3s ease;
     }
 
-    .ai-response-kpis {
+    .shulesoft-ai-interface .ai-response-table table {
+      background: var(--bg-primary) !important;
+      color: var(--text-primary) !important;
+    }
+
+    .shulesoft-ai-interface .ai-response-table th {
+      background: var(--bg-tertiary) !important;
+      color: var(--text-primary) !important;
+      border-color: var(--border-color);
+    }
+
+    .shulesoft-ai-interface .ai-response-table td {
+      color: var(--text-primary) !important;
+      border-color: var(--border-light);
+    }
+
+    .shulesoft-ai-interface .ai-response-kpis {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
       gap: 12px;
       margin: 16px 0;
     }
 
-    .kpi-card {
-      background: #f8f9fa;
+    .shulesoft-ai-interface .kpi-card {
+      background: var(--bg-tertiary) !important;
       border-radius: 12px;
       padding: 16px;
       text-align: center;
-      border: 1px solid #e9ecef;
-      transition: transform 0.2s ease;
+      border: 1px solid var(--border-color);
+      transition: all 0.3s ease;
     }
 
-    .kpi-card:hover {
+    .shulesoft-ai-interface .kpi-card:hover {
       transform: translateY(-2px);
-      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      box-shadow: var(--shadow-lg);
     }
 
-    .kpi-value {
+    .shulesoft-ai-interface .kpi-value {
       font-size: 24px;
       font-weight: bold;
       color: #0d6efd;
       margin-bottom: 4px;
     }
 
-    .kpi-label {
+    .shulesoft-ai-interface .kpi-label {
       font-size: 12px;
-      color: #6c757d;
+      color: var(--text-secondary) !important;
       margin-bottom: 8px;
     }
 
-    .kpi-trend {
+    .shulesoft-ai-interface .kpi-trend {
       font-size: 12px;
     }
 
-    .kpi-trend.up { color: #198754; }
-    .kpi-trend.down { color: #dc3545; }
-    .kpi-trend.stable { color: #6c757d; }
+    .shulesoft-ai-interface .kpi-trend.up { color: var(--success); }
+    .shulesoft-ai-interface .kpi-trend.down { color: var(--danger); }
+    .shulesoft-ai-interface .kpi-trend.stable { color: var(--text-secondary); }
 
-    .recommendations {
+    .shulesoft-ai-interface .recommendations {
       background: rgba(13, 110, 253, 0.1);
       border-left: 4px solid #0d6efd;
       border-radius: 8px;
       padding: 12px 16px;
       margin: 16px 0;
+      transition: all 0.3s ease;
     }
 
-    .recommendations h6 {
+    .shulesoft-ai-interface .recommendations h6 {
       color: #0d6efd;
       margin-bottom: 8px;
       font-size: 14px;
     }
 
-    .recommendations ul {
+    .shulesoft-ai-interface .recommendations ul {
       margin: 0;
       padding-left: 16px;
       font-size: 14px;
+      color: var(--text-primary);
     }
 
-    /* Chat Input Area */
-    .chat-input-area {
-      background: white;
+    /* ===== CHAT INPUT AREA ===== */
+    .shulesoft-ai-interface .chat-input-area {
+      background: var(--bg-primary) !important;
+      color: var(--text-primary) !important;
       padding: 20px;
-      border-top: 1px solid #e9ecef;
+      border-top: 1px solid var(--border-color);
+      transition: all 0.3s ease;
     }
 
-    .suggested-prompts-container {
+    .shulesoft-ai-interface .suggested-prompts-container {
       text-align: center;
     }
 
-    .suggested-prompts {
+    .shulesoft-ai-interface .suggested-prompts {
       display: flex;
       gap: 8px;
       justify-content: center;
       flex-wrap: wrap;
     }
 
-    .suggestion-btn {
-      background: #f8f9fa;
-      border: 1px solid #dee2e6;
+    .shulesoft-ai-interface .suggestion-btn {
+      background: var(--bg-tertiary) !important;
+      border: 1px solid var(--border-color) !important;
       border-radius: 20px;
       padding: 8px 16px;
       font-size: 13px;
-      color: #495057;
+      color: var(--text-primary) !important;
       cursor: pointer;
       transition: all 0.2s ease;
       white-space: nowrap;
     }
 
-    .suggestion-btn:hover {
-      background: #e9ecef;
-      border-color: #0d6efd;
-      color: #0d6efd;
+    .shulesoft-ai-interface .suggestion-btn:hover {
+      background: #0d6efd !important;
+      border-color: #0d6efd !important;
+      color: white !important;
       transform: translateY(-1px);
     }
 
-    .input-container {
+    .shulesoft-ai-interface .input-container {
       max-width: 800px;
       margin: 0 auto;
     }
 
-    .input-wrapper {
+    .shulesoft-ai-interface .input-wrapper {
       position: relative;
       display: flex;
       align-items: center;
-      background: #f8f9fa;
-      border: 2px solid #e9ecef;
+      background: var(--bg-tertiary) !important;
+      border: 2px solid var(--border-color);
       border-radius: 25px;
       padding: 4px;
-      transition: border-color 0.2s ease;
+      transition: all 0.2s ease;
     }
 
-    .input-wrapper:focus-within {
+    .shulesoft-ai-interface .input-wrapper:focus-within {
       border-color: #0d6efd;
       box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.1);
     }
 
-    .chat-input {
+    .shulesoft-ai-interface .chat-input {
       flex: 1;
       border: none;
       background: transparent;
@@ -310,9 +374,14 @@
       font-size: 14px;
       outline: none;
       resize: none;
+      color: var(--text-primary) !important;
     }
 
-    .send-btn {
+    .shulesoft-ai-interface .chat-input::placeholder {
+      color: var(--text-muted) !important;
+    }
+
+    .shulesoft-ai-interface .send-btn {
       width: 40px;
       height: 40px;
       border-radius: 50%;
@@ -326,40 +395,45 @@
       justify-content: center;
     }
 
-    .send-btn:disabled {
-      background: #6c757d;
+    .shulesoft-ai-interface .send-btn:disabled {
+      background: var(--text-secondary);
       cursor: not-allowed;
     }
 
-    .send-btn:not(:disabled):hover {
+    .shulesoft-ai-interface .send-btn:not(:disabled):hover {
       background: #0b5ed7;
       transform: scale(1.05);
     }
 
-    .input-footer {
+    .shulesoft-ai-interface .input-footer {
       text-align: center;
       margin-top: 8px;
     }
 
-    /* Typing Indicator */
-    .typing-indicator {
+    .shulesoft-ai-interface .input-footer small {
+      color: var(--text-secondary) !important;
+    }
+
+    /* ===== TYPING INDICATOR ===== */
+    .shulesoft-ai-interface .typing-indicator {
       display: flex;
       align-items: center;
       gap: 4px;
       padding: 12px 16px;
     }
 
-    .typing-indicator span {
+    .shulesoft-ai-interface .typing-indicator span {
       width: 8px;
       height: 8px;
       border-radius: 50%;
-      background-color: #6c757d;
+      background-color: var(--text-secondary);
       animation: typing 1.4s infinite ease-in-out;
     }
 
-    .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
-    .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+    .shulesoft-ai-interface .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+    .shulesoft-ai-interface .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
 
+    /* ===== ANIMATIONS ===== */
     @keyframes typing {
       0%, 60%, 100% {
         transform: scale(1);
@@ -382,65 +456,107 @@
       }
     }
 
-    /* Usage Indicator */
-    .usage-indicator .badge {
-      border: 1px solid #dee2e6;
+    /* ===== USAGE INDICATOR & BUTTONS ===== */
+    .shulesoft-ai-interface .usage-indicator .badge {
+      border: 1px solid var(--border-color);
+      background: var(--bg-tertiary) !important;
+      color: var(--text-primary) !important;
     }
 
-    /* Responsive Design */
+    .shulesoft-ai-interface .btn-outline-secondary {
+      color: var(--text-secondary) !important;
+      border-color: var(--border-color) !important;
+      background: transparent !important;
+    }
+
+    .shulesoft-ai-interface .btn-outline-secondary:hover {
+      background: var(--bg-tertiary) !important;
+      color: var(--text-primary) !important;
+      border-color: var(--border-color) !important;
+    }
+
+    .shulesoft-ai-interface .btn-primary {
+      background: #0d6efd !important;
+      border-color: #0d6efd !important;
+      color: white !important;
+    }
+
+    .shulesoft-ai-interface .btn-primary:hover {
+      background: #0b5ed7 !important;
+      border-color: #0b5ed7 !important;
+    }
+
+    /* ===== RESPONSIVE DESIGN ===== */
     @media (max-width: 768px) {
-      .neuronai-interface {
+      .shulesoft-ai-interface {
         padding: 10px 0;
       }
 
-      .chat-header {
+      .shulesoft-ai-interface .chat-header {
         margin-bottom: 10px;
         padding: 12px 15px;
       }
 
-      .chat-main-container {
+      .shulesoft-ai-interface .chat-main-container {
         height: calc(100vh - 150px);
       }
 
-      .message-content {
+      .shulesoft-ai-interface .message-content {
         max-width: 85%;
       }
 
-      .suggested-prompts {
+      .shulesoft-ai-interface .suggested-prompts {
         flex-direction: column;
         align-items: center;
       }
 
-      .suggestion-btn {
+      .shulesoft-ai-interface .suggestion-btn {
         width: 100%;
         max-width: 300px;
       }
 
-      .chat-header h4 {
+      .shulesoft-ai-interface .chat-header h4 {
         font-size: 1.1rem;
       }
 
-      .chat-header .d-flex.gap-3 {
+      .shulesoft-ai-interface .chat-header .d-flex.gap-3 {
         gap: 0.5rem !important;
       }
     }
 
-    /* Scrollbar Styling */
-    .chat-messages-area::-webkit-scrollbar {
+    /* ===== SCROLLBAR STYLING ===== */
+    .shulesoft-ai-interface .chat-messages-area::-webkit-scrollbar {
       width: 6px;
     }
 
-    .chat-messages-area::-webkit-scrollbar-track {
-      background: #f1f1f1;
+    .shulesoft-ai-interface .chat-messages-area::-webkit-scrollbar-track {
+      background: var(--bg-tertiary);
     }
 
-    .chat-messages-area::-webkit-scrollbar-thumb {
-      background: #c1c1c1;
+    .shulesoft-ai-interface .chat-messages-area::-webkit-scrollbar-thumb {
+      background: var(--text-secondary);
       border-radius: 3px;
     }
 
-    .chat-messages-area::-webkit-scrollbar-thumb:hover {
-      background: #a8a8a8;
+    .shulesoft-ai-interface .chat-messages-area::-webkit-scrollbar-thumb:hover {
+      background: var(--text-primary);
+    }
+
+    /* ===== ACCESSIBILITY ===== */
+    @media (prefers-reduced-motion: reduce) {
+      .shulesoft-ai-interface * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    /* Focus states for accessibility */
+    .shulesoft-ai-interface .suggestion-btn:focus,
+    .shulesoft-ai-interface .send-btn:focus,
+    .shulesoft-ai-interface .chat-input:focus {
+      outline: 2px solid #0d6efd;
+      outline-offset: 2px;
     }
   </style>
 
@@ -451,7 +567,7 @@
       <div>
         <h4 class="mb-0">
           <i class="fas fa-brain text-primary me-2"></i>
-          NeuronAI Assistant
+          ShuleSoft AI Assistant
         </h4>
         <small class="text-muted">Your intelligent school data analyst</small>
       </div>
@@ -482,7 +598,7 @@
           </div>
           <div class="message-content">
             <div class="message-header">
-              <strong>NeuronAI</strong>
+              <strong>ShuleSoft AI</strong>
               <span class="message-time">Just now</span>
             </div>
             <div class="message-body">
@@ -605,7 +721,7 @@
             </div>
             <div class="message-content">
               <div class="message-header">
-                <strong>NeuronAI</strong>
+                <strong>ShuleSoft AI</strong>
                 <span class="message-time">${timestamp}</span>
               </div>
               <div class="message-body">
@@ -750,7 +866,7 @@
           </div>
           <div class="message-content">
             <div class="message-header">
-              <strong>NeuronAI</strong>
+              <strong>ShuleSoft AI</strong>
               <span class="message-time">${timestamp}</span>
             </div>
             <div class="typing-indicator">
@@ -887,7 +1003,7 @@
             </div>
             <div class="message-content">
               <div class="message-header">
-                <strong>NeuronAI</strong>
+                <strong>ShuleSoft AI</strong>
                 <span class="message-time">Just now</span>
               </div>
               <div class="message-body">
@@ -925,7 +1041,7 @@
         <div class="modal-body">
           <div class="text-center mb-4">
             <h4>Unlock Unlimited AI Reports</h4>
-            <p class="text-muted">Get unlimited access to NeuronAI insights and advanced analytics</p>
+            <p class="text-muted">Get unlimited access to ShuleSoft AI insights and advanced analytics</p>
           </div>
           
           <div class="row">

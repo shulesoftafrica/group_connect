@@ -4,7 +4,6 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    
     <!-- Prevent FOUC - Theme detection and application -->
     <script>
         (function() {
@@ -128,17 +127,54 @@
             color: var(--text-primary);
         }
 
+        /* ===== DARK MODE GLOBAL OVERRIDES ===== */
+        /* Force proper text colors in dark mode to prevent white-on-white issues */
+        [data-theme="dark"] {
+            color-scheme: dark;
+        }
+
+        [data-theme="dark"] * {
+            color: var(--text-primary) !important;
+        }
+
+        [data-theme="dark"] .table,
+        [data-theme="dark"] .table * {
+            background-color: var(--bg-primary) !important;
+            color: var(--text-primary) !important;
+        }
+
+        [data-theme="dark"] .table th,
+        [data-theme="dark"] .table td {
+            background-color: var(--bg-primary) !important;
+            color: var(--text-primary) !important;
+            border-color: var(--border-color) !important;
+        }
+
+        /* Override Bootstrap's default table styling in dark mode */
+        [data-theme="dark"] .table-striped tbody tr:nth-of-type(odd) td,
+        [data-theme="dark"] .table-striped tbody tr:nth-of-type(odd) th {
+            background-color: var(--bg-secondary) !important;
+            color: var(--text-primary) !important;
+        }
+
+        /* Ensure table headers are distinct in dark mode */
+        [data-theme="dark"] .table thead th {
+            background-color: var(--bg-secondary) !important;
+            color: var(--text-primary) !important;
+            border-bottom: 2px solid var(--border-color) !important;
+        }
+
         /* ===== THEME TOGGLE ===== */
         .theme-toggle {
             position: fixed;
             top: 1rem;
-            right: 1rem;
-            z-index: 1200;
+            right: 5rem;
+            z-index: 1050;
             background: var(--bg-primary);
             border: 2px solid var(--border-color);
             border-radius: 50%;
-            width: 50px;
-            height: 50px;
+            width: 45px;
+            height: 45px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -159,7 +195,7 @@
         }
 
         .theme-toggle .icon {
-            font-size: 1.25rem;
+            font-size: 1.1rem;
             color: var(--text-primary);
             transition: transform 0.3s ease;
         }
@@ -255,6 +291,22 @@
             border-bottom: 1px solid var(--border-color);
         }
 
+        .navbar .nav-link {
+            color: var(--text-primary) !important;
+        }
+
+        .navbar .navbar-nav .nav-link {
+            color: var(--text-primary) !important;
+        }
+
+        .navbar .fw-bold {
+            color: var(--text-primary) !important;
+        }
+
+        .navbar .text-muted {
+            color: var(--text-secondary) !important;
+        }
+
         .dropdown-menu {
             background: var(--bg-primary);
             border: 1px solid var(--border-color);
@@ -270,28 +322,260 @@
             color: var(--text-primary);
         }
 
+        .dropdown-divider {
+            border-color: var(--border-color);
+        }
+
+        /* User Avatar */
+        .bg-primary {
+            background-color: var(--btn-primary) !important;
+        }
+
         /* ===== TABLES ===== */
         .table {
             background: var(--bg-primary);
             border-radius: 0.5rem;
             overflow: hidden;
             box-shadow: var(--shadow-sm);
-            color: var(--text-primary);
+            color: var(--text-primary) !important;
         }
 
         .table th {
             background-color: var(--bg-secondary);
             border-color: var(--border-color);
-            color: var(--text-primary);
+            color: var(--text-primary) !important;
+            font-weight: 600;
         }
 
         .table td {
             border-color: var(--border-light);
-            color: var(--text-primary);
+            color: var(--text-primary) !important;
         }
 
         .table-striped > tbody > tr:nth-of-type(odd) > td {
             background-color: var(--bg-secondary);
+        }
+
+        /* Table text elements */
+        .table td *,
+        .table th * {
+            color: inherit !important;
+        }
+
+        /* Dark mode specific table styling - Force proper colors */
+        [data-theme="dark"] .table {
+            background: var(--bg-primary) !important;
+            color: var(--text-primary) !important;
+        }
+
+        [data-theme="dark"] .table thead th {
+            background-color: var(--bg-secondary) !important;
+            border-color: var(--border-color) !important;
+            color: var(--text-primary) !important;
+        }
+
+        [data-theme="dark"] .table tbody td {
+            background-color: var(--bg-primary) !important;
+            border-color: var(--border-color) !important;
+            color: var(--text-primary) !important;
+        }
+
+        [data-theme="dark"] .table tbody tr {
+            background-color: var(--bg-primary) !important;
+            color: var(--text-primary) !important;
+        }
+
+        [data-theme="dark"] .table-striped > tbody > tr:nth-of-type(odd) {
+            background-color: var(--bg-secondary) !important;
+        }
+
+        [data-theme="dark"] .table-striped > tbody > tr:nth-of-type(odd) > td {
+            background-color: var(--bg-secondary) !important;
+            color: var(--text-primary) !important;
+        }
+
+        [data-theme="dark"] .table tbody tr td {
+            color: var(--text-primary) !important;
+        }
+
+        /* Ensure all nested elements in tables are visible in dark mode */
+        [data-theme="dark"] .table td *,
+        [data-theme="dark"] .table th *,
+        [data-theme="dark"] .table tbody tr td *,
+        [data-theme="dark"] .table thead tr th * {
+            color: var(--text-primary) !important;
+        }
+
+        /* Override any Bootstrap text utilities that might interfere */
+        [data-theme="dark"] .table .text-dark,
+        [data-theme="dark"] .table .text-body,
+        [data-theme="dark"] .table .text-black,
+        [data-theme="dark"] .table .text-muted {
+            color: var(--text-primary) !important;
+        }
+
+        /* Table hover effect - should be subtle in dark mode */
+        [data-theme="dark"] .table tbody tr:hover {
+            background-color: var(--bg-tertiary) !important;
+        }
+
+        [data-theme="dark"] .table tbody tr:hover td {
+            background-color: var(--bg-tertiary) !important;
+            color: var(--text-primary) !important;
+        }
+
+        /* Table badges and labels - ensure visibility in dark mode */
+        .table .badge {
+            color: #ffffff !important;
+            font-weight: 600;
+        }
+
+        .table .badge-success,
+        .table .bg-success {
+            background-color: var(--success) !important;
+            color: #ffffff !important;
+        }
+
+        .table .badge-danger,
+        .table .bg-danger {
+            background-color: var(--danger) !important;
+            color: #ffffff !important;
+        }
+
+        .table .badge-warning,
+        .table .bg-warning {
+            background-color: var(--warning) !important;
+            color: #000000 !important;
+        }
+
+        .table .badge-info,
+        .table .bg-info {
+            background-color: var(--info) !important;
+            color: #000000 !important;
+        }
+
+        .table .badge-primary,
+        .table .bg-primary {
+            background-color: var(--btn-primary) !important;
+            color: #ffffff !important;
+        }
+
+        .table .badge-secondary,
+        .table .bg-secondary {
+            background-color: var(--btn-secondary) !important;
+            color: #ffffff !important;
+        }
+
+        /* Additional badge classes that might be used */
+        .table .badge-light {
+            background-color: var(--bg-tertiary) !important;
+            color: var(--text-primary) !important;
+        }
+
+        .table .badge-dark {
+            background-color: var(--text-primary) !important;
+            color: var(--bg-primary) !important;
+        }
+
+        /* Red percentage badges specifically (as seen in your image) */
+        .table .badge.bg-danger,
+        .table .badge-danger,
+        .table span[class*="bg-danger"],
+        .table span[class*="badge-danger"] {
+            background-color: #dc3545 !important;
+            color: #ffffff !important;
+            padding: 0.25em 0.6em !important;
+            font-size: 0.875em !important;
+            font-weight: 600 !important;
+            border-radius: 0.375rem !important;
+        }
+
+        /* Green percentage badges */
+        .table .badge.bg-success,
+        .table .badge-success,
+        .table span[class*="bg-success"],
+        .table span[class*="badge-success"] {
+            background-color: #198754 !important;
+            color: #ffffff !important;
+            padding: 0.25em 0.6em !important;
+            font-size: 0.875em !important;
+            font-weight: 600 !important;
+            border-radius: 0.375rem !important;
+        }
+
+        /* Table links */
+        .table a {
+            color: var(--link-color) !important;
+        }
+
+        .table a:hover {
+            color: var(--link-hover) !important;
+        }
+
+        /* Table row hover effect */
+        .table tbody tr:hover {
+            background-color: var(--bg-tertiary) !important;
+        }
+
+        /* Ensure all table content is visible */
+        .table tbody tr td,
+        .table thead tr th {
+            vertical-align: middle;
+        }
+
+        /* Table responsive wrapper */
+        .table-responsive {
+            background: var(--bg-primary);
+            border-radius: 0.5rem;
+        }
+
+        /* Custom table status indicators */
+        .table .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+
+        .table .status-indicator.success {
+            background-color: var(--success);
+        }
+
+        .table .status-indicator.danger {
+            background-color: var(--danger);
+        }
+
+        .table .status-indicator.warning {
+            background-color: var(--warning);
+        }
+
+        /* Table percentage values and numbers */
+        .table .percentage,
+        .table .number-value {
+            font-weight: 600;
+            color: var(--text-primary) !important;
+        }
+
+        /* Dark mode specific table overrides */
+        [data-theme="dark"] .table {
+            background: var(--bg-primary) !important;
+        }
+
+        [data-theme="dark"] .table th,
+        [data-theme="dark"] .table td {
+            border-color: var(--border-color) !important;
+            color: var(--text-primary) !important;
+        }
+
+        [data-theme="dark"] .table tbody tr:hover td {
+            background-color: var(--bg-tertiary) !important;
+            color: var(--text-primary) !important;
+        }
+
+        [data-theme="dark"] .table-striped > tbody > tr:nth-of-type(odd) > td {
+            background-color: var(--bg-secondary) !important;
+            color: var(--text-primary) !important;
         }
 
         /* ===== BUTTONS ===== */
@@ -388,6 +672,96 @@
             color: var(--link-hover);
         }
 
+        /* ===== BOOTSTRAP TEXT UTILITIES OVERRIDE ===== */
+        /* Ensure all Bootstrap text utilities work in dark mode */
+        [data-theme="dark"] .text-dark {
+            color: var(--text-primary) !important;
+        }
+
+        [data-theme="dark"] .text-muted {
+            color: var(--text-secondary) !important;
+        }
+
+        [data-theme="dark"] .text-body {
+            color: var(--text-primary) !important;
+        }
+
+        [data-theme="dark"] .text-black {
+            color: var(--text-primary) !important;
+        }
+
+        [data-theme="dark"] .text-black-50 {
+            color: var(--text-secondary) !important;
+        }
+
+        [data-theme="dark"] .text-white {
+            color: var(--text-primary) !important;
+        }
+
+        /* Aggressive Bootstrap override for tables */
+        [data-theme="dark"] .table-dark {
+            background-color: var(--bg-primary) !important;
+            color: var(--text-primary) !important;
+        }
+
+        [data-theme="dark"] .table-light {
+            background-color: var(--bg-primary) !important;
+            color: var(--text-primary) !important;
+        }
+
+        /* Force all table elements to use dark theme colors */
+        [data-theme="dark"] .table,
+        [data-theme="dark"] .table-responsive .table {
+            --bs-table-bg: var(--bg-primary) !important;
+            --bs-table-color: var(--text-primary) !important;
+            --bs-table-border-color: var(--border-color) !important;
+            --bs-table-striped-bg: var(--bg-secondary) !important;
+            --bs-table-hover-bg: var(--bg-tertiary) !important;
+            background-color: var(--bg-primary) !important;
+            color: var(--text-primary) !important;
+        }
+
+        /* Ensure percentage badges and labels are visible */
+        [data-theme="dark"] .badge,
+        [data-theme="dark"] .label {
+            color: #ffffff !important;
+        }
+
+        /* Override any inherited Bootstrap classes that might cause invisible text */
+        [data-theme="dark"] .table .text-dark,
+        [data-theme="dark"] .table .text-body,
+        [data-theme="dark"] .table .text-black {
+            color: var(--text-primary) !important;
+        }
+
+        /* Ensure all table cell content is visible */
+        [data-theme="dark"] .table td > *,
+        [data-theme="dark"] .table th > * {
+            color: inherit !important;
+        }
+
+        /* Special handling for progress bars and percentage displays */
+        [data-theme="dark"] .progress {
+            background-color: var(--bg-tertiary) !important;
+        }
+
+        [data-theme="dark"] .progress-bar {
+            color: #ffffff !important;
+        }
+
+        /* Additional table content overrides */
+        [data-theme="dark"] .table tbody,
+        [data-theme="dark"] .table thead,
+        [data-theme="dark"] .table tfoot {
+            background-color: var(--bg-primary) !important;
+            color: var(--text-primary) !important;
+        }
+
+        [data-theme="dark"] .table tr {
+            background-color: var(--bg-primary) !important;
+            color: var(--text-primary) !important;
+        }
+
         /* ===== MOBILE RESPONSIVENESS ===== */
         @media (max-width: 768px) {
             .sidebar {
@@ -404,16 +778,49 @@
 
             .theme-toggle {
                 top: 0.5rem;
-                right: 0.5rem;
+                right: 3.5rem;
                 width: 40px;
                 height: 40px;
+                z-index: 1060;
             }
 
             .theme-toggle .icon {
                 font-size: 1rem;
             }
         }
-    </style>
+
+        /* Additional text color fixes */
+        .text-primary {
+            color: var(--text-primary) !important;
+        }
+
+        .text-secondary {
+            color: var(--text-secondary) !important;
+        }
+
+        .text-muted {
+            color: var(--text-muted) !important;
+        }
+
+        .bg-light {
+            background-color: var(--bg-secondary) !important;
+        }
+
+        .bg-white {
+            background-color: var(--bg-primary) !important;
+        }
+
+        .border {
+            border-color: var(--border-color) !important;
+        }
+
+        .border-bottom {
+            border-bottom-color: var(--border-color) !important;
+        }
+
+        .border-top {
+            border-top-color: var(--border-color) !important;
+        }
     </style>
     
     @stack('styles')
@@ -563,6 +970,7 @@
                         <ul class="dropdown-menu dropdown-menu-end">
                             <!-- <li><a class="dropdown-item" href="#"><i class="bi bi-person me-2"></i>Profile</a></li>
                             <li><a class="dropdown-item" href="#"><i class="bi bi-gear me-2"></i>Settings</a></li> -->
+                            <li><a class="dropdown-item" href="{{ route('user-guide') }}" target="_blank"><i class="bi bi-book me-2"></i>User Guide</a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li>
                                 <form method="POST" action="{{ route('logout') }}">

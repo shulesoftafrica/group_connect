@@ -803,7 +803,7 @@ document.getElementById('selectAllSchools').addEventListener('change', function(
 }
 
 .card-header {
-    background-color: #f8f9fc;
+    /* background-color: #f8f9fc; */
     border-bottom: 1px solid #e3e6f0;
 }
 

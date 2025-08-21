@@ -255,11 +255,11 @@
                     <!-- Action Recommendations -->
                     <div class="mt-3">
                         @if(($financialKPIs['budget_status']['schools_without_budget'] ?? 0) > 0)
-                            <div class="alert alert-warning alert-sm py-2 mb-2">
-                                <i class="bi bi-info-circle me-1"></i>
-                                <strong>Action Required:</strong> 
+                            <div  style="color: black !important;"  class="alert alert-warning alert-sm py-2 mb-2">
+                                <i style="color: black !important;" class="bi bi-info-circle me-1"></i>
+                                <strong  style="color: black !important;" >Action Required:</strong> 
                                 {{ $financialKPIs['budget_status']['schools_without_budget'] }} schools need budget creation.
-                                <a href="#" onclick="initiateSchoolBudgetReminder()" class="alert-link">Send reminders</a>
+                                <a href="#" onclick="initiateSchoolBudgetReminder()" class="alert-link"  style="color: black !important;" >Send reminders</a>
                             </div>
                         @endif
                     </div>
@@ -1197,7 +1197,7 @@
 }
 
 .card-header {
-    background-color: #f8f9fc;
+    /* background-color: #f8f9fc; */
     border-bottom: 1px solid #e3e6f0;
 }
 

@@ -18,6 +18,14 @@ Route::get('/', function () {
     return redirect()->route('login');
 });
 
+// User Guide Route (accessible to authenticated users)
+Route::get('/user-guide', function () {
+    return view('user-guide.index');
+})->name('user-guide');
+
+// Onboarding Route (for new organization registration)
+Route::post('/onboarding/submit', [SettingsController::class, 'submitOnboarding'])->name('onboarding.submit');
+Route::post('/settings/validate-login-code', [SettingsController::class, 'validateLoginCode'])->name('settings.validate-login-code');
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     

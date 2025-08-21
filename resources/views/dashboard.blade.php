@@ -129,7 +129,7 @@
             <div class="card-body">
                 <div class="list-group list-group-flush">
                     @foreach($topSchools as $school)
-                        <div class="list-group-item border-0 px-0 py-3">
+                        <div class="border-0 px-0 py-3">
                             <div class="d-flex align-items-center justify-content-between">
                                 <div class="flex-grow-1">
                                     <div class="fw-bold fs-6 mb-1 text-capitalize">{{ ucfirst($school->schema_name) }}</div>
@@ -212,15 +212,15 @@
                 <!-- Alerts -->
                 <div class="mb-4">
                     <h6 class="text-muted">Recent Alerts</h6>
-                    <div class="alert alert-warning alert-sm" role="alert" style="cursor:pointer;" data-bs-toggle="modal" data-bs-target="#unpublishedResultsModal" id="unpublishedResultsAlert">
-                        <i class="bi bi-exclamation-triangle me-2"></i>
-                        <strong>{{count($examResults)}} schools</strong>  published exam results
+                    <div style="color: black !important;"  class="alert alert-warning alert-sm" role="alert" style="cursor:pointer;" data-bs-toggle="modal" data-bs-target="#unpublishedResultsModal" id="unpublishedResultsAlert">
+                        <i  style="color: black !important;" class="bi bi-exclamation-triangle me-2"></i>
+                        <strong  style="color: black !important;" >{{count($examResults)}} schools</strong>  published exam results
                     </div>
 
                     
-                    <div class="alert alert-info alert-sm" role="alert" style="cursor:pointer;" data-bs-toggle="modal" data-bs-target="#budgetApprovalsModal" id="pendingBudgetAlert">
-                        <i class="bi bi-info-circle me-2"></i>
-                        <strong>{{count($pendingBudgets)}} budget approvals</strong> pending review
+                    <div style="color: black !important;" class="alert alert-info alert-sm" role="alert" style="cursor:pointer;" data-bs-toggle="modal" data-bs-target="#budgetApprovalsModal" id="pendingBudgetAlert">
+                        <i style="color: black !important;"  class="bi bi-info-circle me-2"></i>
+                        <strong  style="color: black !important;" >{{count($pendingBudgets)}} budget approvals</strong> pending review
                     </div>
 
                   
@@ -244,8 +244,8 @@
                             $message = 'Fee collection rate is critically low';
                         }
                     @endphp
-                    <div class="alert {{ $alertClass }} alert-sm" role="alert">
-                        <i class="bi {{ $icon }} me-2"></i>
+                    <div  style="color: black !important;"  class="alert {{ $alertClass }} alert-sm" role="alert">
+                        <i  style="color: black !important;" class="bi {{ $icon }} me-2"></i>
                         {{ $message }} ({{ number_format($rate, 1) }}%)
                     </div>
                 </div>
