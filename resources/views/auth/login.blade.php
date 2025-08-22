@@ -442,6 +442,75 @@
             font-size: 1.2rem;
         }
         
+        /* Trust Section */
+        .trust-section {
+            padding: 80px 0;
+            background: var(--bg-secondary);
+            text-align: center;
+        }
+        
+        .trust-section h2 {
+            color: var(--text-primary);
+            font-size: 2.5rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+        
+        .trust-section .lead {
+            color: var(--text-secondary);
+            max-width: 800px;
+            margin: 0 auto 3rem;
+            font-size: 1.2rem;
+            line-height: 1.6;
+        }
+        
+        .trust-logo-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 2rem;
+        }
+        
+        .trust-logo {
+            max-height: 120px;
+            max-width: 400px;
+            width: auto;
+            height: auto;
+            filter: grayscale(0);
+            transition: all 0.3s ease;
+            opacity: 0.9;
+        }
+        
+        .trust-logo:hover {
+            opacity: 1;
+            transform: scale(1.05);
+        }
+        
+        [data-theme="dark"] .trust-logo {
+            filter: brightness(0.9) grayscale(0.2);
+        }
+        
+        [data-theme="dark"] .trust-logo:hover {
+            filter: brightness(1) grayscale(0);
+        }
+        
+        /* Responsive trust section */
+        @media (max-width: 768px) {
+            .trust-section h2 {
+                font-size: 2rem;
+            }
+            
+            .trust-section .lead {
+                font-size: 1.1rem;
+                margin-bottom: 2rem;
+            }
+            
+            .trust-logo {
+                max-height: 80px;
+                max-width: 300px;
+            }
+        }
+
         /* FAQ Section */
         .faq {
             padding: 80px 0;
@@ -1222,6 +1291,27 @@
         </div>
     </section>
 
+    <!-- Trust Section -->
+    <section id="trust" class="trust-section">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-10">
+                    <h2 class="fade-in">Backed by Global Trust</h2>
+                    <p class="lead fade-in">
+                        ShuleSoft is proudly supported by the Mastercard Foundation, a globally recognized institution dedicated to advancing education and innovation across Africa.
+                    </p>
+                    
+                    <div class="trust-logo-container fade-in">
+                        <img src="/media/mastercard-foundation.png" 
+                             alt="Mastercard Foundation Logo" 
+                             class="trust-logo"
+                             loading="lazy">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- FAQ Section -->
     <section id="faq" class="faq">
         <div class="container">
@@ -1422,9 +1512,9 @@
                     <h5><i class="fas fa-graduation-cap me-2"></i>ShuleSoft Group Connect</h5>
                     <p>Empowering school owners with AI-driven insights and centralized management for educational excellence.</p>
                     <div class="social-links">
-                        <a href="#" class="me-3"><i class="fab fa-twitter"></i></a>
-                        <a href="#" class="me-3"><i class="fab fa-linkedin"></i></a>
-                        <a href="#" class="me-3"><i class="fab fa-facebook"></i></a>
+                        <a href="https://twitter.com/ShuleSoft" class="me-3" target="_blank"><i class="fab fa-twitter"></i></a>
+                        <a href="https://www.linkedin.com/company/shulesoft-tz" class="me-3" target="_blank"><i class="fab fa-linkedin"></i></a>
+                        <a href="https://www.facebook.com/ShuleSoft" class="me-3" target="_blank"><i class="fab fa-facebook"></i></a>
                     </div>
                 </div>
                 
@@ -1434,17 +1524,17 @@
                         <li><a href="#features">Features</a></li>
                         <li><a href="#faq">FAQ</a></li>
                         <li><a href="#demo">Demo</a></li>
-                        <li><a href="#api">API</a></li>
+                        <!-- <li><a href="#api">API</a></li> -->
                     </ul>
                 </div>
                 
                 <div class="col-lg-2 col-md-6 mb-4">
                     <h6>Company</h6>
                     <ul class="list-unstyled">
-                        <li><a href="#about">About</a></li>
-                        <li><a href="#careers">Careers</a></li>
-                        <li><a href="#blog">Blog</a></li>
-                        <li><a href="#press">Press</a></li>
+                        <li><a href="https://www.shulesoft.africa/about" target="_blank">About</a></li>
+                        <li><a href="https://www.shulesoft.africa/careers" target="_blank">Careers</a></li>
+                        <li><a href="https://www.shulesoft.africa/blog" target="_blank">Blog</a></li>
+                        <li><a href="https://www.shulesoft.africa/press" target="_blank">Press</a></li>
                     </ul>
                 </div>
                 
@@ -1461,10 +1551,10 @@
                 <div class="col-lg-2 col-md-6 mb-4">
                     <h6>Legal</h6>
                     <ul class="list-unstyled">
-                        <li><a href="#privacy">Privacy Policy</a></li>
-                        <li><a href="#terms">Terms of Service</a></li>
-                        <li><a href="#security">Security</a></li>
-                        <li><a href="#compliance">Compliance</a></li>
+                        <li><a href="{{ route('legal.privacy-policy') }}">Privacy Policy</a></li>
+                        <li><a href="{{ route('legal.terms-of-service') }}">Terms of Service</a></li>
+                        <li><a href="{{ route('legal.ai-policy-security') }}">AI Policy & Security</a></li>
+                        <li><a href="{{ route('legal.data-processing-agreement') }}">Data Processing Agreement</a></li>
                     </ul>
                 </div>
             </div>

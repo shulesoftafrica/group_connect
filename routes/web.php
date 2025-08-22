@@ -12,6 +12,7 @@ use App\Http\Controllers\CommunicationsController;
 use App\Http\Controllers\DigitalLearningController;
 use App\Http\Controllers\InsightsController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\LegalController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -40,6 +41,12 @@ Route::post('/demo/request', [SettingsController::class, 'storeDemoRequest'])->n
 Route::get('/demo/approve/{token}', [SettingsController::class, 'approveDemoRequest'])->name('demo.approve');
 Route::get('/demo/approval-success', [SettingsController::class, 'demoApprovalSuccess'])->name('demo.approval.success');
 Route::get('/demo/test', function() { return view('demo.test'); })->name('demo.test');
+
+// Legal Pages Routes (publicly accessible)
+Route::get('/privacy-policy', [LegalController::class, 'privacyPolicy'])->name('legal.privacy-policy');
+Route::get('/terms-of-service', [LegalController::class, 'termsOfService'])->name('legal.terms-of-service');
+Route::get('/ai-policy-security', [LegalController::class, 'aiPolicyAndSecurity'])->name('legal.ai-policy-security');
+Route::get('/data-processing-agreement', [LegalController::class, 'dataProcessingAgreement'])->name('legal.data-processing-agreement');
 
 // Legacy onboarding route (keep for now)
 Route::post('/onboarding/submit', [SettingsController::class, 'submitOnboarding'])->name('onboarding.submit');
