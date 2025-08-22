@@ -35,6 +35,12 @@ Route::get('/onboarding/step4', [SettingsController::class, 'onboardingStep4'])-
 Route::post('/onboarding/step4', [SettingsController::class, 'completeOnboarding'])->name('onboarding.complete');
 Route::get('/onboarding/success', [SettingsController::class, 'onboardingSuccess'])->name('onboarding.success');
 
+// Demo Request Routes
+Route::post('/demo/request', [SettingsController::class, 'storeDemoRequest'])->name('demo.request');
+Route::get('/demo/approve/{token}', [SettingsController::class, 'approveDemoRequest'])->name('demo.approve');
+Route::get('/demo/approval-success', [SettingsController::class, 'demoApprovalSuccess'])->name('demo.approval.success');
+Route::get('/demo/test', function() { return view('demo.test'); })->name('demo.test');
+
 // Legacy onboarding route (keep for now)
 Route::post('/onboarding/submit', [SettingsController::class, 'submitOnboarding'])->name('onboarding.submit');
 Route::post('/settings/validate-login-code', [SettingsController::class, 'validateLoginCode'])->name('settings.validate-login-code');

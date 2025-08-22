@@ -5,29 +5,167 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ShuleSoft Group Connect - User Guide</title>
     
+    <!-- Prevent FOUC - Theme detection and application -->
+    <script>
+        (function() {
+            // Check for saved theme preference or default to system preference
+            const savedTheme = localStorage.getItem('theme');
+            const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            
+            let theme;
+            if (savedTheme) {
+                theme = savedTheme;
+            } else {
+                theme = systemPrefersDark ? 'dark' : 'light';
+            }
+            
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
+    
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <style>
+        /* ===== THEME VARIABLES ===== */
         :root {
-            --primary-color: #0d6efd;
-            --secondary-color: #6c757d;
-            --success-color: #198754;
-            --warning-color: #ffc107;
-            --danger-color: #dc3545;
-            --info-color: #0dcaf0;
-            --light-bg: #f8f9fa;
+            /* Brand Colors */
+            --primary-color: #1eba9b;
+            --primary-dark: #16a085;
+            --secondary-color: #2c3e50;
+            
+            /* Light Theme Colors */
+            --bg-primary: #ffffff;
+            --bg-secondary: #f8f9fa;
+            --bg-tertiary: #e9ecef;
+            --text-primary: #2c3e50;
+            --text-secondary: #6c757d;
+            --text-muted: #adb5bd;
             --border-color: #dee2e6;
+            --border-light: #e9ecef;
+            
+            /* Interactive Elements */
+            --link-color: #1eba9b;
+            --link-hover: #16a085;
+            --btn-primary: #1eba9b;
+            --btn-primary-hover: #16a085;
+            --btn-secondary: #6c757d;
+            --btn-secondary-hover: #5c636a;
+            
+            /* Status Colors */
+            --success: #198754;
+            --warning: #ffc107;
+            --danger: #dc3545;
+            --info: #0dcaf0;
+            
+            /* Shadows */
+            --shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            --shadow-md: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+            --shadow-lg: 0 1rem 3rem rgba(0, 0, 0, 0.175);
+            
+            /* Focus */
+            --focus-ring: 0 0 0 0.25rem rgba(30, 186, 155, 0.25);
+        }
+
+        /* Dark Theme */
+        [data-theme="dark"] {
+            /* Background Colors */
+            --bg-primary: #1a1d29;
+            --bg-secondary: #232631;
+            --bg-tertiary: #2a2d3a;
+            --text-primary: #e9ecef;
+            --text-secondary: #adb5bd;
+            --text-muted: #6c757d;
+            --border-color: #3d4144;
+            --border-light: #495057;
+            
+            /* Interactive Elements */
+            --link-color: #1eba9b;
+            --link-hover: #16a085;
+            --btn-primary: #1eba9b;
+            --btn-primary-hover: #16a085;
+            --btn-secondary: #495057;
+            --btn-secondary-hover: #3d4144;
+            
+            /* Status Colors */
+            --success: #20c997;
+            --warning: #ffc107;
+            --danger: #dc3545;
+            --info: #0dcaf0;
+            
+            /* Shadows */
+            --shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 0.5rem 1rem rgba(0, 0, 0, 0.4);
+            --shadow-lg: 0 1rem 3rem rgba(0, 0, 0, 0.5);
+            
+            /* Focus */
+            --focus-ring: 0 0 0 0.25rem rgba(30, 186, 155, 0.25);
+        }
+
+        /* ===== BASE STYLES ===== */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--light-bg);
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
         }
+
+        /* ===== THEME TOGGLE ===== */
+        .theme-toggle {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 1050;
+            background: var(--bg-primary);
+            border: 2px solid var(--border-color);
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow-md);
+        }
+
+        .theme-toggle:hover {
+            transform: scale(1.1);
+            border-color: var(--btn-primary);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .theme-toggle:focus {
+            outline: none;
+            box-shadow: var(--focus-ring);
+        }
+
+        .theme-toggle .icon {
+            font-size: 1.1rem;
+            color: var(--text-primary);
+            transition: transform 0.3s ease;
+        }
+
+        .theme-toggle:hover .icon {
+            transform: rotate(180deg);
+        }
+
+        [data-theme="light"] .theme-toggle .dark-icon { display: none; }
+        [data-theme="light"] .theme-toggle .light-icon { display: block; }
+        [data-theme="dark"] .theme-toggle .dark-icon { display: block; }
+        [data-theme="dark"] .theme-toggle .light-icon { display: none; }
 
         .navbar {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -45,16 +183,16 @@
             left: 0;
             width: 280px;
             height: 100vh;
-            background: #ffffff;
+            background: var(--bg-primary);
             border-right: 1px solid var(--border-color);
             z-index: 1000;
             overflow-y: auto;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+            box-shadow: var(--shadow-md);
         }
 
         .sidebar-header {
             padding: 1.5rem;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
             color: white;
             text-align: center;
         }
@@ -71,7 +209,7 @@
             padding: 0.5rem 1.5rem;
             font-size: 0.85rem;
             font-weight: 600;
-            color: var(--secondary-color);
+            color: var(--text-muted);
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
@@ -79,7 +217,7 @@
         .nav-link {
             display: block;
             padding: 0.75rem 1.5rem;
-            color: #333;
+            color: var(--text-primary);
             text-decoration: none;
             transition: all 0.3s ease;
             border-left: 3px solid transparent;
@@ -87,7 +225,7 @@
 
         .nav-link:hover,
         .nav-link.active {
-            background-color: rgba(13, 110, 253, 0.1);
+            background-color: rgba(30, 186, 155, 0.1);
             color: var(--primary-color);
             border-left-color: var(--primary-color);
         }
@@ -102,25 +240,28 @@
             margin-left: 280px;
             padding: 2rem;
             min-height: 100vh;
+            background-color: var(--bg-secondary);
         }
 
         .search-box {
             position: sticky;
             top: 0;
-            background: white;
+            background: var(--bg-primary);
             padding: 1.5rem;
             border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: var(--shadow-md);
             margin-bottom: 2rem;
             z-index: 100;
+            border: 1px solid var(--border-color);
         }
 
         .content-section {
-            background: white;
+            background: var(--bg-primary);
             border-radius: 10px;
             padding: 2rem;
             margin-bottom: 2rem;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
             display: none;
         }
 
@@ -135,23 +276,24 @@
         }
 
         .section-title {
-            color: var(--primary-color);
+            color: var(--text-primary);
             font-weight: 600;
             margin-bottom: 0.5rem;
         }
 
         .feature-card {
-            background: #f8f9fa;
+            background: var(--bg-secondary);
             border-radius: 8px;
             padding: 1.5rem;
             margin-bottom: 1rem;
             border-left: 4px solid var(--primary-color);
             transition: transform 0.2s ease;
+            border: 1px solid var(--border-color);
         }
 
         .feature-card:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            box-shadow: var(--shadow-md);
         }
 
         .step-number {
@@ -168,13 +310,27 @@
         }
 
         .alert-info {
-            border-left: 4px solid var(--info-color);
+            border-left: 4px solid var(--info);
             background-color: rgba(13, 202, 240, 0.1);
+            border: 1px solid var(--border-color);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
         }
 
         .alert-warning {
-            border-left: 4px solid var(--warning-color);
+            border-left: 4px solid var(--warning);
             background-color: rgba(255, 193, 7, 0.1);
+            border: 1px solid var(--border-color);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .alert-success {
+            border-left: 4px solid var(--success);
+            background-color: rgba(25, 135, 84, 0.1);
+            border: 1px solid var(--border-color);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
         }
 
         .pricing-badge {
@@ -189,24 +345,98 @@
         }
 
         .screenshot-placeholder {
-            background: #e9ecef;
-            border: 2px dashed #adb5bd;
+            background: var(--bg-tertiary);
+            border: 2px dashed var(--border-color);
             border-radius: 8px;
             height: 200px;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #6c757d;
+            color: var(--text-muted);
             font-style: italic;
             margin: 1rem 0;
         }
 
         .kbd {
-            background-color: #212529;
-            color: #fff;
+            background-color: var(--bg-tertiary);
+            color: var(--text-primary);
             padding: 0.2rem 0.4rem;
             border-radius: 0.2rem;
             font-size: 0.875em;
+            border: 1px solid var(--border-color);
+        }
+
+        /* Form Controls */
+        .form-control {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+
+        .form-control:focus {
+            background-color: var(--bg-secondary);
+            border-color: var(--primary-color);
+            color: var(--text-primary);
+            box-shadow: var(--focus-ring);
+        }
+
+        .form-control::placeholder {
+            color: var(--text-muted);
+        }
+
+        /* Tables */
+        .table {
+            --bs-table-bg: var(--bg-primary);
+            --bs-table-color: var(--text-primary);
+            --bs-table-border-color: var(--border-color);
+        }
+
+        .table-bordered {
+            border: 1px solid var(--border-color);
+        }
+
+        .table-bordered th,
+        .table-bordered td {
+            border: 1px solid var(--border-color);
+        }
+
+        /* Additional element styles */
+        h1, h2, h3, h4, h5, h6 {
+            color: var(--text-primary);
+        }
+
+        p, li {
+            color: var(--text-secondary);
+        }
+
+        .text-muted {
+            color: var(--text-muted) !important;
+        }
+
+        .lead {
+            color: var(--text-secondary);
+        }
+
+        /* Accordion styles */
+        .accordion {
+            --bs-accordion-bg: var(--bg-primary);
+            --bs-accordion-border-color: var(--border-color);
+            --bs-accordion-btn-color: var(--text-primary);
+        }
+
+        .accordion-button {
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+
+        .accordion-button:not(.collapsed) {
+            background-color: var(--bg-tertiary);
+            color: var(--primary-color);
+        }
+
+        .accordion-body {
+            background-color: var(--bg-primary);
+            color: var(--text-secondary);
         }
 
         @media (max-width: 768px) {
@@ -230,6 +460,12 @@
     </style>
 </head>
 <body>
+    <!-- Theme Toggle Button -->
+    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle dark/light mode">
+        <i class="fas fa-moon icon dark-icon"></i>
+        <i class="fas fa-sun icon light-icon"></i>
+    </button>
+
     <!-- Sidebar Navigation -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
@@ -420,7 +656,7 @@
                     <div class="feature-card">
                         <h5><span class="step-number">3</span>First Login</h5>
                         <ul>
-                            <li>Access your dashboard at <code>connect.shulesoft.com</code></li>
+                            <li>Access your dashboard at <code>shulesoft.group</code></li>
                             <li>Use your registered email and password</li>
                             <li>Complete the welcome wizard</li>
                             <li>Start adding your schools</li>
@@ -825,6 +1061,484 @@
             </div>
         </div>
 
+        <!-- Academics -->
+        <div id="academics" class="content-section">
+            <div class="section-header">
+                <h1 class="section-title"><i class="bi bi-book me-2"></i>Academics</h1>
+                <p class="lead">Academic performance tracking and curriculum management</p>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-8">
+                    <h3>Academic Performance Tracking</h3>
+                    
+                    <div class="feature-card">
+                        <h5><span class="step-number">1</span>Examination Results Analysis</h5>
+                        <p>Track academic performance across all schools:</p>
+                        <ul>
+                            <li><strong>Exam Scores:</strong> Aggregated from `shulesoft.mark` table</li>
+                            <li><strong>Subject Performance:</strong> Average marks by subject across schools</li>
+                            <li><strong>Grade Distribution:</strong> Statistical analysis of student grades</li>
+                            <li><strong>Comparative Analysis:</strong> School-to-school performance comparison</li>
+                        </ul>
+                        <div class="alert alert-info">
+                            <strong>Data Source:</strong> DashboardController.getExamResults() calculates average marks from the `shulesoft.mark` table, filtering by schema_name to separate school data.
+                        </div>
+                    </div>
+
+                    <div class="feature-card">
+                        <h5><span class="step-number">2</span>Student Progression Tracking</h5>
+                        <p>Monitor student academic journey:</p>
+                        <ul>
+                            <li><strong>Promotion Rates:</strong> Percentage of students advancing to next level</li>
+                            <li><strong>Dropout Analysis:</strong> Students with inactive status in `shulesoft.student`</li>
+                            <li><strong>Academic Improvement:</strong> Term-over-term performance trends</li>
+                            <li><strong>At-Risk Students:</strong> Early warning system for academic struggles</li>
+                        </ul>
+                    </div>
+
+                    <h3>Academic Data Sources</h3>
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Component</th>
+                                    <th>Database Table</th>
+                                    <th>Key Metrics</th>
+                                    <th>Calculation Logic</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Student Marks</td>
+                                    <td>shulesoft.mark</td>
+                                    <td>Average score, Pass rate</td>
+                                    <td>AVG(mark), COUNT(mark >= pass_mark)</td>
+                                </tr>
+                                <tr>
+                                    <td>Student Info</td>
+                                    <td>shulesoft.student</td>
+                                    <td>Enrollment, Active students</td>
+                                    <td>COUNT(*) WHERE status = 1</td>
+                                </tr>
+                                <tr>
+                                    <td>Class Management</td>
+                                    <td>shulesoft.classes</td>
+                                    <td>Class sizes, Grade distribution</td>
+                                    <td>Student count per class</td>
+                                </tr>
+                                <tr>
+                                    <td>Subject Performance</td>
+                                    <td>shulesoft.subject</td>
+                                    <td>Subject-wise averages</td>
+                                    <td>AVG(mark) GROUP BY subject</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="alert alert-success">
+                        <h5><i class="bi bi-lightbulb me-2"></i>Academic Insights</h5>
+                        <p class="mb-0">The system automatically identifies high-performing and underperforming schools, subjects, and students to help you focus improvement efforts.</p>
+                    </div>
+                    
+                    <div class="screenshot-placeholder">
+                        <span>Academic Performance Dashboard</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Operations -->
+        <div id="operations" class="content-section">
+            <div class="section-header">
+                <h1 class="section-title"><i class="bi bi-gear me-2"></i>Operations</h1>
+                <p class="lead">Daily operations management and monitoring</p>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-8">
+                    <h3>Operational KPIs & Monitoring</h3>
+                    
+                    <div class="feature-card">
+                        <h5><span class="step-number">1</span>Attendance Management</h5>
+                        <p>Monitor attendance across all schools:</p>
+                        <ul>
+                            <li><strong>Student Attendance:</strong> Calculated from `shulesoft.sattendances` table</li>
+                            <li><strong>Staff Attendance:</strong> Tracked via `shulesoft.tattendances` (if available)</li>
+                            <li><strong>Attendance Trends:</strong> Monthly and weekly patterns</li>
+                            <li><strong>Low Attendance Alerts:</strong> Schools below threshold notifications</li>
+                        </ul>
+                        <div class="alert alert-info">
+                            <strong>Calculation Method:</strong> OperationsController.calculateOperationalKPIs() computes attendance as (SUM(present=1) / COUNT(*)) × 100 for each schema, then averages across all schools.
+                        </div>
+                    </div>
+
+                    <div class="feature-card">
+                        <h5><span class="step-number">2</span>Infrastructure Management</h5>
+                        <p>Track operational infrastructure:</p>
+                        <ul>
+                            <li><strong>Transport Routes:</strong> Active routes from `shulesoft.transport_routes`</li>
+                            <li><strong>Hostel Occupancy:</strong> Calculated from `shulesoft.hostels` and `shulesoft.hmembers`</li>
+                            <li><strong>Library Activity:</strong> Book circulation from `shulesoft.issue` and `shulesoft.book_quantity`</li>
+                            <li><strong>Maintenance Requests:</strong> Pending operational issues</li>
+                        </ul>
+                    </div>
+
+                    <h3>Operations Data Computation</h3>
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Metric</th>
+                                    <th>Source Table</th>
+                                    <th>Calculation</th>
+                                    <th>Purpose</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Student Attendance</td>
+                                    <td>sattendances</td>
+                                    <td>AVG(present) × 100 by schema</td>
+                                    <td>Daily operations monitoring</td>
+                                </tr>
+                                <tr>
+                                    <td>Staff Attendance</td>
+                                    <td>tattendances</td>
+                                    <td>AVG(present) × 100 by schema</td>
+                                    <td>Staff performance tracking</td>
+                                </tr>
+                                <tr>
+                                    <td>Hostel Occupancy</td>
+                                    <td>hostels, hmembers</td>
+                                    <td>(Current occupied / Total capacity) × 100</td>
+                                    <td>Resource utilization</td>
+                                </tr>
+                                <tr>
+                                    <td>Transport Routes</td>
+                                    <td>transport_routes</td>
+                                    <td>COUNT(*) active routes</td>
+                                    <td>Transport efficiency</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="alert alert-warning">
+                        <h5><i class="bi bi-exclamation-triangle me-2"></i>Data Availability</h5>
+                        <p class="mb-0">Some operational metrics depend on specific table structures. The system gracefully handles missing tables and provides fallback values when data is unavailable.</p>
+                    </div>
+                    
+                    <div class="screenshot-placeholder">
+                        <span>Operations Dashboard</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Finance & Accounts -->
+        <div id="finance" class="content-section">
+            <div class="section-header">
+                <h1 class="section-title"><i class="bi bi-calculator me-2"></i>Finance & Accounts</h1>
+                <p class="lead">Financial management and reporting across all schools</p>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-8">
+                    <h3>Financial KPIs & Analytics</h3>
+                    
+                    <div class="feature-card">
+                        <h5><span class="step-number">1</span>Revenue Management</h5>
+                        <p>Track revenue across all schools:</p>
+                        <ul>
+                            <li><strong>Total Revenue:</strong> Sum of all payments from `shulesoft.payments` table</li>
+                            <li><strong>Fee Collection Rate:</strong> (Collected fees ÷ Expected fees) × 100</li>
+                            <li><strong>Revenue Trends:</strong> Monthly and quarterly growth patterns</li>
+                            <li><strong>Outstanding Fees:</strong> Calculated from `shulesoft.material_invoice_balance`</li>
+                        </ul>
+                        <div class="alert alert-info">
+                            <strong>Calculation Method:</strong> FinanceController.calculateFinancialKPIs() aggregates payments data using SUM(amount) grouped by school schema and time periods.
+                        </div>
+                    </div>
+
+                    <div class="feature-card">
+                        <h5><span class="step-number">2</span>Expense Tracking</h5>
+                        <p>Monitor expenses and budget compliance:</p>
+                        <ul>
+                            <li><strong>Total Expenses:</strong> Aggregated from `shulesoft.expenses` table</li>
+                            <li><strong>Category Breakdown:</strong> Expenses grouped by category field</li>
+                            <li><strong>Budget Variance:</strong> Actual vs planned expenses comparison</li>
+                            <li><strong>Payroll Costs:</strong> Staff salary calculations</li>
+                        </ul>
+                    </div>
+
+                    <div class="feature-card">
+                        <h5><span class="step-number">3</span>Bank Reconciliation</h5>
+                        <p>Automated reconciliation features:</p>
+                        <ul>
+                            <li><strong>Statement Import:</strong> CSV/Excel bank statement processing</li>
+                            <li><strong>Transaction Matching:</strong> Automatic matching with recorded payments</li>
+                            <li><strong>Discrepancy Reports:</strong> Unmatched transactions identification</li>
+                            <li><strong>Multi-School Banking:</strong> Separate bank accounts per school</li>
+                        </ul>
+                    </div>
+
+                    <h3>Financial Data Sources</h3>
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Financial Component</th>
+                                    <th>Database Table</th>
+                                    <th>Key Fields</th>
+                                    <th>Calculation</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Fee Payments</td>
+                                    <td>shulesoft.payments</td>
+                                    <td>amount, date, student_id</td>
+                                    <td>SUM(amount) by schema</td>
+                                </tr>
+                                <tr>
+                                    <td>Expected Fees</td>
+                                    <td>shulesoft.fees_installments_classes</td>
+                                    <td>amount, start_date, end_date</td>
+                                    <td>SUM(amount) for period</td>
+                                </tr>
+                                <tr>
+                                    <td>Expenses</td>
+                                    <td>shulesoft.expenses</td>
+                                    <td>amount, category, date</td>
+                                    <td>SUM(amount) GROUP BY category</td>
+                                </tr>
+                                <tr>
+                                    <td>Revenue Sources</td>
+                                    <td>shulesoft.revenues</td>
+                                    <td>amount, payment_method</td>
+                                    <td>SUM(amount) by method</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="alert alert-success">
+                        <h5><i class="bi bi-graph-up me-2"></i>Financial Insights</h5>
+                        <p class="mb-0">The system provides automated financial analytics including profit margins, cash flow projections, and collection rate optimization suggestions.</p>
+                    </div>
+                    
+                    <div class="screenshot-placeholder">
+                        <span>Finance Dashboard</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Human Resources -->
+        <div id="hr" class="content-section">
+            <div class="section-header">
+                <h1 class="section-title"><i class="bi bi-people me-2"></i>Human Resources</h1>
+                <p class="lead">Staff management and HR analytics across your school network</p>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-8">
+                    <h3>HR Management & Analytics</h3>
+                    
+                    <div class="feature-card">
+                        <h5><span class="step-number">1</span>Staff Directory</h5>
+                        <p>Comprehensive staff management:</p>
+                        <ul>
+                            <li><strong>Teacher Records:</strong> Data from `shulesoft.teacher` table</li>
+                            <li><strong>Staff Categories:</strong> Teachers, administrative staff, support staff</li>
+                            <li><strong>Qualifications:</strong> Education and certification tracking</li>
+                            <li><strong>Employment Status:</strong> Active, inactive, on leave</li>
+                        </ul>
+                        <div class="alert alert-info">
+                            <strong>Data Source:</strong> HRController.getAllStaffData() aggregates staff information from teacher and user tables, filtering by schema_name for multi-school access.
+                        </div>
+                    </div>
+
+                    <div class="feature-card">
+                        <h5><span class="step-number">2</span>Attendance & Performance</h5>
+                        <p>Track staff performance metrics:</p>
+                        <ul>
+                            <li><strong>Staff Attendance:</strong> Calculated from `shulesoft.tattendances` table</li>
+                            <li><strong>Performance Reviews:</strong> Annual and periodic evaluations</li>
+                            <li><strong>Leave Management:</strong> Track sick leave, vacation, and other absences</li>
+                            <li><strong>Professional Development:</strong> Training and certification progress</li>
+                        </ul>
+                    </div>
+
+                    <div class="feature-card">
+                        <h5><span class="step-number">3</span>Payroll & Benefits</h5>
+                        <p>Salary and benefits management:</p>
+                        <ul>
+                            <li><strong>Salary Processing:</strong> Automated payroll calculations</li>
+                            <li><strong>Benefits Administration:</strong> Health insurance, retirement plans</li>
+                            <li><strong>Tax Compliance:</strong> Automated tax calculations and reporting</li>
+                            <li><strong>Expense Reimbursements:</strong> Travel and professional expenses</li>
+                        </ul>
+                    </div>
+
+                    <h3>HR Data Sources</h3>
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>HR Component</th>
+                                    <th>Database Table</th>
+                                    <th>Key Metrics</th>
+                                    <th>Calculation Method</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Teacher Count</td>
+                                    <td>shulesoft.teacher</td>
+                                    <td>Active staff count</td>
+                                    <td>COUNT(*) WHERE active = true</td>
+                                </tr>
+                                <tr>
+                                    <td>Staff Attendance</td>
+                                    <td>shulesoft.tattendances</td>
+                                    <td>Attendance percentage</td>
+                                    <td>AVG(present) × 100</td>
+                                </tr>
+                                <tr>
+                                    <td>Leave Requests</td>
+                                    <td>shulesoft.leave_applications</td>
+                                    <td>Approved/Pending leaves</td>
+                                    <td>COUNT(*) GROUP BY status</td>
+                                </tr>
+                                <tr>
+                                    <td>Salary Costs</td>
+                                    <td>shulesoft.expenses</td>
+                                    <td>Total salary expenses</td>
+                                    <td>SUM(amount) WHERE category = 'salary'</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="alert alert-info">
+                        <h5><i class="bi bi-person-check me-2"></i>Staff Analytics</h5>
+                        <p class="mb-0">The HR module provides insights into staff turnover, performance trends, and optimal staffing levels for each school in your network.</p>
+                    </div>
+                    
+                    <div class="screenshot-placeholder">
+                        <span>HR Dashboard</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Communications -->
+        <div id="communications" class="content-section">
+            <div class="section-header">
+                <h1 class="section-title"><i class="bi bi-chat-dots me-2"></i>Communications</h1>
+                <p class="lead">Multi-channel communication management across your school network</p>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-8">
+                    <h3>Communication Channels & Analytics</h3>
+                    
+                    <div class="feature-card">
+                        <h5><span class="step-number">1</span>Message Management</h5>
+                        <p>Multi-channel communication system:</p>
+                        <ul>
+                            <li><strong>SMS Messaging:</strong> Bulk SMS to parents, students, and staff</li>
+                            <li><strong>Email Campaigns:</strong> Automated and manual email sending</li>
+                            <li><strong>WhatsApp Integration:</strong> Business messaging via WhatsApp API</li>
+                            <li><strong>In-App Notifications:</strong> System notifications and announcements</li>
+                        </ul>
+                        <div class="alert alert-info">
+                            <strong>Implementation:</strong> CommunicationsController.sendMessage() handles multi-channel message dispatch with recipient validation and delivery tracking.
+                        </div>
+                    </div>
+
+                    <div class="feature-card">
+                        <h5><span class="step-number">2</span>Campaign Management</h5>
+                        <p>Organized communication campaigns:</p>
+                        <ul>
+                            <li><strong>Announcement Campaigns:</strong> School-wide or network-wide announcements</li>
+                            <li><strong>Survey Distribution:</strong> Feedback collection from stakeholders</li>
+                            <li><strong>Alert Systems:</strong> Emergency and urgent communications</li>
+                            <li><strong>Reminder Services:</strong> Fee payments, events, and deadlines</li>
+                        </ul>
+                    </div>
+
+                    <div class="feature-card">
+                        <h5><span class="step-number">3</span>Communication Analytics</h5>
+                        <p>Track communication effectiveness:</p>
+                        <ul>
+                            <li><strong>Delivery Rates:</strong> Message delivery success rates by channel</li>
+                            <li><strong>Response Tracking:</strong> Parent and student engagement metrics</li>
+                            <li><strong>Channel Performance:</strong> Effectiveness of SMS vs Email vs WhatsApp</li>
+                            <li><strong>Communication Trends:</strong> Optimal timing and frequency analysis</li>
+                        </ul>
+                    </div>
+
+                    <h3>Communication Data Sources</h3>
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Communication Type</th>
+                                    <th>Data Source</th>
+                                    <th>Key Metrics</th>
+                                    <th>Tracking Method</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>SMS Messages</td>
+                                    <td>SMS API Logs</td>
+                                    <td>Sent, Delivered, Failed</td>
+                                    <td>API response tracking</td>
+                                </tr>
+                                <tr>
+                                    <td>Email Campaigns</td>
+                                    <td>Email Service Logs</td>
+                                    <td>Open rate, Click rate</td>
+                                    <td>Email service analytics</td>
+                                </tr>
+                                <tr>
+                                    <td>WhatsApp Messages</td>
+                                    <td>WhatsApp Business API</td>
+                                    <td>Delivery status, Read receipts</td>
+                                    <td>WhatsApp webhooks</td>
+                                </tr>
+                                <tr>
+                                    <td>Parent Contacts</td>
+                                    <td>shulesoft.student</td>
+                                    <td>Phone numbers, Email addresses</td>
+                                    <td>Student record linkage</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="alert alert-success">
+                        <h5><i class="bi bi-megaphone me-2"></i>Communication Insights</h5>
+                        <p class="mb-0">The system provides insights into optimal communication timing, preferred channels by demographic, and message effectiveness to improve parent engagement.</p>
+                    </div>
+                    
+                    <div class="screenshot-placeholder">
+                        <span>Communications Dashboard</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Other sections will continue with similar structure... -->
         <!-- For brevity, I'll include a few more key sections -->
 
@@ -934,7 +1648,7 @@
                         <div class="col-md-6">
                             <div class="feature-card">
                                 <h5><i class="bi bi-envelope text-primary me-2"></i>Email Support</h5>
-                                <p><strong>support@shulesoft.com</strong></p>
+                                <p><strong>support@shulesoft.africa</strong></p>
                                 <p>Response time: 4-6 hours</p>
                                 <p class="mb-0">Available for all users</p>
                             </div>
@@ -942,7 +1656,7 @@
                         <div class="col-md-6">
                             <div class="feature-card">
                                 <h5><i class="bi bi-telephone text-primary me-2"></i>Phone Support</h5>
-                                <p><strong>+255 123 456 789</strong></p>
+                                <p><strong>+255 655 406 004</strong></p>
                                 <p>Mon-Fri: 8AM - 6PM EAT</p>
                                 <p class="mb-0">Premium subscribers only</p>
                             </div>
@@ -1098,7 +1812,7 @@
                             </h2>
                             <div id="collapse7" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
                                 <div class="accordion-body">
-                                    Contact our support team at support@shulesoft.com or use the live chat feature. We also offer personalized training sessions for new subscribers to help you get the most out of the platform.
+                                    Contact our support team at support@shulesoft.africa or use the live chat feature. We also offer personalized training sessions for new subscribers to help you get the most out of the platform.
                                 </div>
                             </div>
                         </div>
@@ -1215,6 +1929,52 @@
             // Show overview section by default
             showSection('overview');
         });
+
+        // ===== THEME MANAGEMENT =====
+        class ThemeManager {
+            constructor() {
+                this.theme = document.documentElement.getAttribute('data-theme') || 'light';
+                this.init();
+            }
+
+            init() {
+                // Listen for system theme changes
+                window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+                    if (!localStorage.getItem('theme')) {
+                        this.setTheme(e.matches ? 'dark' : 'light');
+                    }
+                });
+            }
+
+            setTheme(theme) {
+                this.theme = theme;
+                document.documentElement.setAttribute('data-theme', theme);
+                localStorage.setItem('theme', theme);
+                
+                // Dispatch custom event for other components
+                window.dispatchEvent(new CustomEvent('themeChanged', { 
+                    detail: { theme: theme } 
+                }));
+            }
+
+            toggle() {
+                const newTheme = this.theme === 'light' ? 'dark' : 'light';
+                this.setTheme(newTheme);
+            }
+
+            getTheme() {
+                return this.theme;
+            }
+        }
+
+        // Initialize theme manager
+        const themeManager = new ThemeManager();
+        window.themeManager = themeManager;
+
+        // Theme toggle function
+        function toggleTheme() {
+            themeManager.toggle();
+        }
     </script>
 </body>
 </html>

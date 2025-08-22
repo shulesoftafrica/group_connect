@@ -1031,7 +1031,7 @@
                         <a class="btn btn-primary btn-lg me-3"  href="{{ route('onboarding.start') }}">
                             <i class="fas fa-rocket me-2"></i>Start Free Trial
     </a>
-                        <a href="#demo" class="btn btn-outline-primary btn-lg">
+                        <a href="#demo" class="btn btn-outline-primary btn-lg" data-bs-toggle="modal" data-bs-target="#demoRequestModal">
                             <i class="fas fa-play me-2"></i>Request Demo
                         </a>
                     </div>
@@ -1142,7 +1142,7 @@
                     <a class="btn btn-light btn-lg me-3" href="{{ route('onboarding.start') }}">
                         <i class="fas fa-calendar-check me-2"></i>Start 14-Day Free Trial
     </a>
-                    <a href="#demo" class="btn btn-outline-light btn-lg">
+                    <a href="#demo" class="btn btn-outline-light btn-lg" data-bs-toggle="modal" data-bs-target="#demoRequestModal">
                         <i class="fas fa-eye me-2"></i>See Live Demo
                     </a>
                 </div>
@@ -1922,6 +1922,99 @@
         </div>
     </div>
 
+    <!-- Demo Request Modal -->
+    <div class="modal fade" id="demoRequestModal" tabindex="-1" aria-labelledby="demoRequestModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="demoRequestModalLabel">
+                        <i class="fas fa-rocket me-2 text-primary"></i>
+                        Request Demo Access
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Get exclusive demo access to ShuleSoft Group Connect!</strong><br>
+                        Fill out the form below and our sales team will set up your personalized demo account.
+                    </div>
+
+                    <form id="demoRequestForm">
+                        @csrf
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="organization_name" class="form-label">Organization Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="organization_name" name="organization_name" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="organization_contact" class="form-label">Organization Contact <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="organization_contact" name="organization_contact" required>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="contact_name" class="form-label">Contact Person Name <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="contact_name" name="contact_name" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="contact_phone" class="form-label">Contact Phone <span class="text-danger">*</span></label>
+                                <input type="tel" class="form-control" id="contact_phone" name="contact_phone" required>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="contact_email" class="form-label">Contact Email <span class="text-danger">*</span></label>
+                                <input type="email" class="form-control" id="contact_email" name="contact_email" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="organization_country" class="form-label">Country <span class="text-danger">*</span></label>
+                                <select class="form-control" id="organization_country" name="organization_country" required>
+                                    <option value="">Select Country</option>
+                                    <option value="Kenya">Kenya</option>
+                                    <option value="Uganda">Uganda</option>
+                                    <option value="Tanzania">Tanzania</option>
+                                    <option value="Rwanda">Rwanda</option>
+                                    <option value="South Africa">South Africa</option>
+                                    <option value="Nigeria">Nigeria</option>
+                                    <option value="Ghana">Ghana</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-8 mb-3">
+                                <label for="organization_address" class="form-label">Organization Address <span class="text-danger">*</span></label>
+                                <textarea class="form-control" id="organization_address" name="organization_address" rows="3" required></textarea>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="total_schools" class="form-label">Total Schools <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control" id="total_schools" name="total_schools" min="1" required>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-warning">
+                            <i class="fas fa-clock me-2"></i>
+                            <strong>What happens next?</strong><br>
+                            Our sales team will review your request and send you demo credentials within 24 hours.
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Cancel
+                    </button>
+                    <button type="button" class="btn btn-primary" id="submitDemoRequest">
+                        <i class="fas fa-paper-plane me-2"></i>Submit Request
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <!-- jQuery -->
@@ -2248,6 +2341,92 @@
                 navbar.style.background = '';
                 navbar.style.backdropFilter = '';
             }
+        });
+
+        // ===== DEMO REQUEST FUNCTIONALITY =====
+        $(document).ready(function() {
+            // Demo request form submission
+            $('#submitDemoRequest').on('click', function() {
+                const form = $('#demoRequestForm');
+                const btn = $(this);
+                
+                // Basic validation
+                if (!form[0].checkValidity()) {
+                    form[0].reportValidity();
+                    return;
+                }
+
+                // Show loading state
+                btn.prop('disabled', true);
+                btn.html('<i class="fas fa-spinner fa-spin me-2"></i>Submitting...');
+
+                const formData = {
+                    _token: $('input[name="_token"]').val(),
+                    organization_name: $('#organization_name').val(),
+                    organization_contact: $('#organization_contact').val(),
+                    contact_name: $('#contact_name').val(),
+                    contact_phone: $('#contact_phone').val(),
+                    contact_email: $('#contact_email').val(),
+                    organization_address: $('#organization_address').val(),
+                    organization_country: $('#organization_country').val(),
+                    total_schools: $('#total_schools').val()
+                };
+
+                $.ajax({
+                    url: '{{ route("demo.request") }}',
+                    method: 'POST',
+                    data: formData,
+                    success: function(response) {
+                        if (response.success) {
+                            // Show success message
+                            $('.modal-body').html(`
+                                <div class="text-center py-4">
+                                    <div class="mb-3">
+                                        <i class="fas fa-check-circle text-success" style="font-size: 4rem;"></i>
+                                    </div>
+                                    <h4 class="text-success">Request Submitted Successfully!</h4>
+                                    <p class="text-muted">${response.message}</p>
+                                    <p class="small text-muted mt-3">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        You will receive an email with your demo credentials within 24 hours.
+                                    </p>
+                                </div>
+                            `);
+                            
+                            // Hide footer buttons and show close button
+                            $('.modal-footer').html(`
+                                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
+                                    <i class="fas fa-check me-2"></i>Done
+                                </button>
+                            `);
+                        }
+                    },
+                    error: function(xhr) {
+                        // Show error message
+                        let errorMessage = 'An error occurred while submitting your request. Please try again.';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMessage = xhr.responseJSON.message;
+                        }
+                        
+                        alert('Error: ' + errorMessage);
+                        
+                        // Reset button
+                        btn.prop('disabled', false);
+                        btn.html('<i class="fas fa-paper-plane me-2"></i>Submit Request');
+                    }
+                });
+            });
+
+            // Reset form when modal is closed
+            $('#demoRequestModal').on('hidden.bs.modal', function() {
+                // Reset form
+                $('#demoRequestForm')[0].reset();
+                
+                // Reset modal content if it was changed
+                if ($('.modal-body .text-center.py-4').length > 0) {
+                    location.reload(); // Simple reload to reset modal
+                }
+            });
         });
 
         // ===== ONBOARDING WIZARD FUNCTIONALITY =====

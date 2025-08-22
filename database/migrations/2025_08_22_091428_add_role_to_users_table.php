@@ -11,8 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('connect_schools', function (Blueprint $table) {
-            $table->dropUnique(['connect_user_id', 'connect_organization_id']);
+        Schema::table('users', function (Blueprint $table) {
+            $table->string('role')->default('user')->after('password');
         });
     }
 
@@ -21,8 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('connect_schools', function (Blueprint $table) {
-            $table->unique(['connect_user_id', 'connect_organization_id']);
+        Schema::table('users', function (Blueprint $table) {
+            $table->dropColumn('role');
         });
     }
 };

@@ -7,9 +7,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use App\Models\User;
 use App\Models\School;
 use App\Models\Organization;
+use App\Models\DemoRequest;
 
 class SettingsController extends Controller
 {
@@ -1185,5 +1187,153 @@ class SettingsController extends Controller
     public function onboardingSuccess()
     {
         return view('onboarding.success');
+    }
+
+    /**
+     * Store demo request
+     */
+    public function storeDemoRequest(Request $request)
+    {
+        try {
+            \Log::info('Demo request received', $request->all());
+            
+            $validated = $request->validate([
+                'organization_name' => 'required|string|max:255',
+                'organization_contact' => 'required|string|max:255', 
+                'contact_name' => 'required|string|max:255',
+                'contact_phone' => 'required|string|max:20',
+                'contact_email' => 'required|email|max:255',
+                'organization_address' => 'required|string',
+                'organization_country' => 'required|string|max:255',
+                'total_schools' => 'required|integer|min:1'
+            ]);
+
+            \Log::info('Validation passed', $validated);
+
+            // Create demo request
+            $demoRequest = DemoRequest::create($validated);
+            
+            \Log::info('Demo request created', ['id' => $demoRequest->id]);
+            
+            // Generate approval token
+            $token = $demoRequest->generateApprovalToken();
+
+            \Log::info('Token generated', ['token' => $token]);
+
+            // Send email to sales team
+            $this->sendDemoRequestEmail($demoRequest, $token);
+
+            \Log::info('Email sent successfully');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Demo request submitted successfully! Our sales team will contact you soon.'
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Demo request error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while submitting your request. Please try again.'
+            ], 500);
+        }
+    }
+
+    /**
+     * Approve demo request
+     */
+    public function approveDemoRequest($token)
+    {
+        try {
+            $demoRequest = DemoRequest::where('approval_token', $token)
+                ->where('status', 'pending')
+                ->firstOrFail();
+
+            // Generate credentials
+            $username = 'demo_' . strtolower(str_replace(' ', '_', $demoRequest->organization_name)) . '_' . rand(1000, 9999);
+            $password = Str::random(12);
+
+            // Create user account
+            $user = User::create([
+                'name' => $demoRequest->contact_name,
+                'email' => $demoRequest->contact_email,
+                'password' => Hash::make($password),
+                'status' => 'active'
+            ]);
+
+            // Update demo request
+            $demoRequest->update([
+                'status' => 'approved',
+                'approved_at' => now(),
+                'credentials' => [
+                    'username' => $username,
+                    'password' => $password,
+                    'user_id' => $user->id
+                ]
+            ]);
+
+            // Send credentials to applicant
+            $this->sendDemoCredentials($demoRequest, $username, $password);
+
+            return redirect()->route('demo.approval.success')
+                ->with('success', 'Demo request approved successfully! Credentials have been sent to the applicant.');
+
+        } catch (\Exception $e) {
+            return back()->with('error', 'An error occurred while approving the demo request.');
+        }
+    }
+
+    /**
+     * Send demo request notification email to sales team
+     */
+    private function sendDemoRequestEmail($demoRequest, $token)
+    {
+        $approvalUrl = route('demo.approve', ['token' => $token]);
+        
+        $emailData = [
+            'organization_name' => $demoRequest->organization_name,
+            'contact_name' => $demoRequest->contact_name,
+            'contact_email' => $demoRequest->contact_email,
+            'contact_phone' => $demoRequest->contact_phone,
+            'organization_contact' => $demoRequest->organization_contact,
+            'organization_address' => $demoRequest->organization_address,
+            'organization_country' => $demoRequest->organization_country,
+            'total_schools' => $demoRequest->total_schools,
+            'approval_url' => $approvalUrl,
+            'submitted_at' => $demoRequest->created_at->format('M d, Y H:i:s')
+        ];
+
+        Mail::send('emails.demo-request', $emailData, function ($message) {
+            $message->to('sales@shulesoft.africa')
+                ->subject('New Demo Request - ShuleSoft Group Connect');
+        });
+    }
+
+    /**
+     * Send demo credentials to applicant
+     */
+    private function sendDemoCredentials($demoRequest, $username, $password)
+    {
+        $emailData = [
+            'contact_name' => $demoRequest->contact_name,
+            'organization_name' => $demoRequest->organization_name,
+            'username' => $username,
+            'password' => $password,
+            'login_url' => route('login')
+        ];
+
+        Mail::send('emails.demo-credentials', $emailData, function ($message) use ($demoRequest) {
+            $message->to($demoRequest->contact_email)
+                ->subject('Your ShuleSoft Group Connect Demo Access');
+        });
+    }
+
+    /**
+     * Demo approval success page
+     */
+    public function demoApprovalSuccess()
+    {
+        return view('demo.approval-success');
     }
 }
