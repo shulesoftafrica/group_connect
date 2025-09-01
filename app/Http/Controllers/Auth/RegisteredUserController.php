@@ -40,7 +40,17 @@ class RegisteredUserController extends Controller
             'email' => $request->email,
             'password' => Hash::make($request->password),
         ]);
-
+        // Insert email record into the shulesoft.email table
+        \DB::table('shulesoft.email')->insert([
+            'body' => 'Welcome to our platform, ' . $user->name . '!',
+            'subject' => 'Welcome Email',
+            'user_id' => $user->id,
+            'email' => $user->email,
+            'schema_name' => 'shulesoft',
+            'table' => 'users',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
         event(new Registered($user));
 
         Auth::login($user);

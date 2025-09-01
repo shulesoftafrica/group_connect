@@ -160,7 +160,7 @@ class SettingsController extends Controller
             "You have been registered by " . Auth::user()->name . " and allocated to the school(s): {$allocatedSchool}.\n\n" .
             "Your login URL is: {$loginUrl}\n" .
             "Username: {$request->email}\n" .
-            "Default Password: {$defaultPassword}\n\n" .
+            "Default Password: {$pass}\n\n" .
             "Please log in and change your password immediately.\n\n" .
             "Thank you,\nShuleSoft Team";
 
@@ -171,6 +171,18 @@ class SettingsController extends Controller
         ", [
             $request->phone, $message,
             $request->phone, $message
+        ]);
+
+        // Insert the message into the shulesoft.email table
+        DB::insert("
+            INSERT INTO shulesoft.email (body, subject, user_id, email, schema_name, created_at, status)
+            VALUES (?, ?, ?, ?, ?, NOW(), 0)
+        ", [
+            $message, // body
+            "Welcome to ShuleSoft", // subject
+            Auth::user()->id, // user_id
+            $request->email, // email
+            'shulesoft' // schema_name
         ]);
 
         return redirect()->back()->with('success', 'User created and invitation sent successfully.');
@@ -705,7 +717,7 @@ class SettingsController extends Controller
 
             // 2. Create the main user account
             $defaultRole = DB::selectOne("SELECT id FROM shulesoft.connect_roles WHERE name = 'owner' LIMIT 1");
-            $roleId = $defaultRole ? $defaultRole->id : 1;
+            $roleId = $defaultRole ? $defaultRole->id : 16;
 
             $userId = DB::table('shulesoft.connect_users')->insertGetId([
                 'name' => $validated['contact_name'],
@@ -1145,8 +1157,8 @@ class SettingsController extends Controller
             ]);
 
             // Create main user
-            $defaultRole = DB::selectOne("SELECT id FROM shulesoft.connect_roles WHERE name = 'Administrator' LIMIT 1");
-            $roleId = $defaultRole ? $defaultRole->id : 1;
+            $defaultRole = DB::selectOne("SELECT id FROM shulesoft.connect_roles WHERE name = 'owner' LIMIT 1");
+            $roleId = $defaultRole ? $defaultRole->id : 16;
 
             $userId = DB::table('shulesoft.connect_users')->insertGetId([
                 'name' => $onboardingData['contact_name'],
