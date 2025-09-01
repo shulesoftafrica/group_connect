@@ -1317,7 +1317,7 @@ class SettingsController extends Controller
         ];
 
         Mail::send('emails.demo-request', $emailData, function ($message) {
-            $message->to('sales@shulesoft.africa')
+            $message->to('sales@mail.shulesoft.co')
                 ->subject('New Demo Request - ShuleSoft Group Connect');
         });
     }

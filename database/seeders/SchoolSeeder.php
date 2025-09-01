@@ -15,7 +15,7 @@ class SchoolSeeder extends Seeder
     public function run(): void
     {
         $organization = Organization::where('username', 'shulesoft_group')->first();
-        $adminUser = User::where('email', 'admin@shulesoft.com')->first();
+        $adminUser = User::where('email', 'admin@shulesoft.africa')->first();
 
         if (!$organization || !$adminUser) {
             $this->command->error('Organization or admin user not found. Please run organization and user seeders first.');
