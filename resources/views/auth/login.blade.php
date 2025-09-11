@@ -3198,7 +3198,7 @@
                 const formData = new FormData(document.getElementById('onboardingForm'));
                 formData.append('_token', '{{ csrf_token() }}');
 
-                // Submit form to server
+                // Submit form to server with enhanced error handling
                 fetch('{{ route("onboarding.submit") }}', {
                     method: 'POST',
                     body: formData,
@@ -3206,7 +3206,20 @@
                         'X-Requested-With': 'XMLHttpRequest'
                     }
                 })
-                .then(response => response.json())
+                .then(response => {
+                    // Check if response is ok
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+                    
+                    // Check if response is JSON
+                    const contentType = response.headers.get('content-type');
+                    if (!contentType || !contentType.includes('application/json')) {
+                        throw new Error('Server returned non-JSON response. This might be a server error.');
+                    }
+                    
+                    return response.json();
+                })
                 .then(data => {
                     if (data.success) {
                         this.showAlert(`
@@ -3220,13 +3233,69 @@
                             window.location.href = data.redirect || '/login';
                         }, 3000);
                     } else {
-                        this.showAlert(data.message || 'An error occurred. Please try again.', 'danger');
+                        // Enhanced error handling with detailed messages
+                        let errorMessage = data.message || 'An error occurred. Please try again.';
+                        
+                        // Add additional error details if available
+                        if (data.errors && Array.isArray(data.errors) && data.errors.length > 0) {
+                            errorMessage += '<br><br><strong>Details:</strong><ul>';
+                            data.errors.forEach(error => {
+                                errorMessage += `<li>${error}</li>`;
+                            });
+                            errorMessage += '</ul>';
+                        }
+                        
+                        // Add field-specific error highlighting
+                        if (data.validation_fields && Array.isArray(data.validation_fields)) {
+                            data.validation_fields.forEach(field => {
+                                const input = document.querySelector(`[name="${field}"]`);
+                                if (input) {
+                                    input.classList.add('is-invalid');
+                                    // Remove invalid class after user starts typing
+                                    input.addEventListener('input', function() {
+                                        this.classList.remove('is-invalid');
+                                    }, { once: true });
+                                }
+                            });
+                        }
+                        
+                        // Add debug information in development
+                        if (data.debug_info) {
+                            errorMessage += `<br><br><small class="text-muted"><strong>Debug Info:</strong><br>`;
+                            if (data.debug_info.constraint) {
+                                errorMessage += `Constraint: ${data.debug_info.constraint}<br>`;
+                            }
+                            if (data.debug_info.sql_state) {
+                                errorMessage += `SQL State: ${data.debug_info.sql_state}<br>`;
+                            }
+                            if (data.error_type) {
+                                errorMessage += `Error Type: ${data.error_type}`;
+                            }
+                            errorMessage += `</small>`;
+                        }
+                        
+                        this.showAlert(errorMessage, 'danger');
                         this.resetSubmitButton();
                     }
                 })
                 .catch(error => {
-                    console.error('Error:', error);
-                    this.showAlert('A network error occurred. Please check your connection and try again.', 'danger');
+                    console.error('Registration Error:', error);
+                    
+                    let errorMessage = 'A network error occurred. Please check your connection and try again.';
+                    
+                    // Try to extract more specific error information
+                    if (error.message) {
+                        errorMessage += `<br><br><strong>Technical Details:</strong> ${error.message}`;
+                    }
+                    
+                    // Check if it's a server error response
+                    if (error.name === 'SyntaxError') {
+                        errorMessage = 'The server returned an invalid response. This might be a server configuration issue. Please contact support.';
+                    } else if (error.message.includes('Failed to fetch')) {
+                        errorMessage = 'Unable to reach the server. Please check your internet connection and try again.';
+                    }
+                    
+                    this.showAlert(errorMessage, 'danger');
                     this.resetSubmitButton();
                 });
             }

@@ -681,62 +681,92 @@ class SettingsController extends Controller
             ]);
             
             // Pre-validation check to catch duplicates that Laravel validation might miss
-            \Log::info('Starting pre-validation database checks');
+            \Log::info('Starting pre-validation database checks', [
+                'email_to_check' => $request->input('contact_email'),
+                'phone_to_check' => $request->input('contact_phone'),
+                'org_to_check' => $request->input('org_name')
+            ]);
             
+            // Check for existing email with detailed logging
             if ($request->filled('contact_email')) {
-                $existingEmail = DB::selectOne("SELECT id, name FROM shulesoft.connect_users WHERE email = ?", [$request->contact_email]);
+                $emailToCheck = $request->input('contact_email');
+                \Log::info('Checking for duplicate email', ['email' => $emailToCheck]);
+                
+                $existingEmail = DB::selectOne("SELECT id, name, email FROM shulesoft.connect_users WHERE email = ?", [$emailToCheck]);
+                
                 if ($existingEmail) {
-                    \Log::warning('Duplicate email detected in pre-validation', [
-                        'email' => $request->contact_email,
+                    \Log::error('DUPLICATE EMAIL DETECTED - BLOCKING REGISTRATION', [
+                        'attempted_email' => $emailToCheck,
                         'existing_user_id' => $existingEmail->id,
-                        'existing_user_name' => $existingEmail->name
+                        'existing_user_name' => $existingEmail->name,
+                        'blocking_registration' => true
                     ]);
                     
                     return response()->json([
                         'success' => false,
-                        'message' => "The email address '{$request->contact_email}' is already registered with another account. Please use a different email address or contact support if this is your account.",
+                        'message' => "The email address '{$emailToCheck}' is already registered with another account (User: {$existingEmail->name}). Please use a different email address or contact support if this is your account.",
                         'field' => 'contact_email',
-                        'error_type' => 'duplicate_email'
+                        'error_type' => 'duplicate_email',
+                        'existing_user' => $existingEmail->name
                     ], 422);
+                } else {
+                    \Log::info('Email check passed - no duplicate found', ['email' => $emailToCheck]);
                 }
             }
             
+            // Check for existing phone with detailed logging
             if ($request->filled('contact_phone')) {
-                $existingPhone = DB::selectOne("SELECT id, name FROM shulesoft.connect_users WHERE phone = ?", [$request->contact_phone]);
+                $phoneToCheck = $request->input('contact_phone');
+                \Log::info('Checking for duplicate phone', ['phone' => $phoneToCheck]);
+                
+                $existingPhone = DB::selectOne("SELECT id, name, phone FROM shulesoft.connect_users WHERE phone = ?", [$phoneToCheck]);
+                
                 if ($existingPhone) {
-                    \Log::warning('Duplicate phone detected in pre-validation', [
-                        'phone' => $request->contact_phone,
+                    \Log::error('DUPLICATE PHONE DETECTED - BLOCKING REGISTRATION', [
+                        'attempted_phone' => $phoneToCheck,
                         'existing_user_id' => $existingPhone->id,
-                        'existing_user_name' => $existingPhone->name
+                        'existing_user_name' => $existingPhone->name,
+                        'blocking_registration' => true
                     ]);
                     
                     return response()->json([
                         'success' => false,
-                        'message' => "The phone number '{$request->contact_phone}' is already registered with another account. Please use a different phone number or contact support if this is your account.",
+                        'message' => "The phone number '{$phoneToCheck}' is already registered with another account (User: {$existingPhone->name}). Please use a different phone number or contact support if this is your account.",
                         'field' => 'contact_phone',
-                        'error_type' => 'duplicate_phone'
+                        'error_type' => 'duplicate_phone',
+                        'existing_user' => $existingPhone->name
                     ], 422);
+                } else {
+                    \Log::info('Phone check passed - no duplicate found', ['phone' => $phoneToCheck]);
                 }
             }
             
+            // Check for existing organization name
             if ($request->filled('org_name')) {
-                $existingOrg = DB::selectOne("SELECT id, name FROM shulesoft.connect_organizations WHERE LOWER(name) = LOWER(?)", [$request->org_name]);
+                $orgToCheck = $request->input('org_name');
+                \Log::info('Checking for duplicate organization name', ['org_name' => $orgToCheck]);
+                
+                $existingOrg = DB::selectOne("SELECT id, name FROM shulesoft.connect_organizations WHERE LOWER(name) = LOWER(?)", [$orgToCheck]);
+                
                 if ($existingOrg) {
-                    \Log::warning('Duplicate organization name detected in pre-validation', [
-                        'org_name' => $request->org_name,
-                        'existing_org_id' => $existingOrg->id
+                    \Log::error('DUPLICATE ORGANIZATION NAME DETECTED - BLOCKING REGISTRATION', [
+                        'attempted_org_name' => $orgToCheck,
+                        'existing_org_id' => $existingOrg->id,
+                        'blocking_registration' => true
                     ]);
                     
                     return response()->json([
                         'success' => false,
-                        'message' => "An organization with the name '{$request->org_name}' already exists. Please choose a different organization name.",
+                        'message' => "An organization with the name '{$orgToCheck}' already exists. Please choose a different organization name.",
                         'field' => 'org_name',
                         'error_type' => 'duplicate_organization'
                     ], 422);
+                } else {
+                    \Log::info('Organization name check passed - no duplicate found', ['org_name' => $orgToCheck]);
                 }
             }
             
-            \Log::info('Pre-validation checks passed, proceeding with Laravel validation');
+            \Log::info('All pre-validation checks passed - proceeding with Laravel validation');
             
             // Validate the incoming request
             $validated = $request->validate([
@@ -840,6 +870,24 @@ class SettingsController extends Controller
             // 2. Create the main user account
             $defaultRole = DB::selectOne("SELECT id FROM shulesoft.connect_roles WHERE name = 'owner' LIMIT 1");
             $roleId = $defaultRole ? $defaultRole->id : 16;
+
+            // FINAL FAIL-SAFE CHECK: Double-check for duplicates right before insertion
+            \Log::info('Final fail-safe check before user insertion', [
+                'email' => $validated['contact_email'],
+                'phone' => $validated['contact_phone']
+            ]);
+            
+            $finalEmailCheck = DB::selectOne("SELECT id, name FROM shulesoft.connect_users WHERE email = ?", [$validated['contact_email']]);
+            if ($finalEmailCheck) {
+                throw new \Exception("CRITICAL: Duplicate email detected in final check - {$validated['contact_email']} already exists for user {$finalEmailCheck->name} (ID: {$finalEmailCheck->id})");
+            }
+            
+            $finalPhoneCheck = DB::selectOne("SELECT id, name FROM shulesoft.connect_users WHERE phone = ?", [$validated['contact_phone']]);
+            if ($finalPhoneCheck) {
+                throw new \Exception("CRITICAL: Duplicate phone detected in final check - {$validated['contact_phone']} already exists for user {$finalPhoneCheck->name} (ID: {$finalPhoneCheck->id})");
+            }
+            
+            \Log::info('Final fail-safe check passed - proceeding with user insertion');
 
             $userId = DB::table('shulesoft.connect_users')->insertGetId([
                 'name' => $validated['contact_name'],
@@ -1478,15 +1526,90 @@ class SettingsController extends Controller
 
     public function completeOnboarding(Request $request)
     {
-        $validated = $request->validate([
-            'password' => 'required|string|min:8|confirmed',
-        ]);
-
-        // Get all onboarding data from session
-        $onboardingData = session('onboarding_data', []);
-        $onboardingData = array_merge($onboardingData, $validated);
-
         try {
+            $validated = $request->validate([
+                'password' => 'required|string|min:8|confirmed',
+            ]);
+
+            // Get all onboarding data from session
+            $onboardingData = session('onboarding_data', []);
+            $onboardingData = array_merge($onboardingData, $validated);
+
+            \Log::info('Step-by-step onboarding completion started', [
+                'session_data' => array_except($onboardingData, ['password', 'password_confirmation']),
+                'contact_email' => $onboardingData['contact_email'] ?? null,
+                'contact_phone' => $onboardingData['contact_phone'] ?? null,
+                'org_name' => $onboardingData['org_name'] ?? null
+            ]);
+
+            // CRITICAL: Pre-validation checks for step-by-step onboarding
+            if (isset($onboardingData['contact_email'])) {
+                $emailToCheck = $onboardingData['contact_email'];
+                \Log::info('Checking for duplicate email in step-by-step onboarding', ['email' => $emailToCheck]);
+                
+                $existingEmail = DB::selectOne("SELECT id, name, email FROM shulesoft.connect_users WHERE email = ?", [$emailToCheck]);
+                if ($existingEmail) {
+                    \Log::error('DUPLICATE EMAIL DETECTED IN STEP-BY-STEP ONBOARDING - BLOCKING', [
+                        'attempted_email' => $emailToCheck,
+                        'existing_user_id' => $existingEmail->id,
+                        'existing_user_name' => $existingEmail->name,
+                        'blocking_registration' => true
+                    ]);
+                    
+                    // Clear session data since registration failed
+                    session()->forget('onboarding_data');
+                    
+                    return redirect()->route('onboarding.step1')->with('error', 
+                        "The email address '{$emailToCheck}' is already registered with another account (User: {$existingEmail->name}). Please use a different email address or contact support if this is your account."
+                    );
+                }
+            }
+
+            if (isset($onboardingData['contact_phone'])) {
+                $phoneToCheck = $onboardingData['contact_phone'];
+                \Log::info('Checking for duplicate phone in step-by-step onboarding', ['phone' => $phoneToCheck]);
+                
+                $existingPhone = DB::selectOne("SELECT id, name, phone FROM shulesoft.connect_users WHERE phone = ?", [$phoneToCheck]);
+                if ($existingPhone) {
+                    \Log::error('DUPLICATE PHONE DETECTED IN STEP-BY-STEP ONBOARDING - BLOCKING', [
+                        'attempted_phone' => $phoneToCheck,
+                        'existing_user_id' => $existingPhone->id,
+                        'existing_user_name' => $existingPhone->name,
+                        'blocking_registration' => true
+                    ]);
+                    
+                    // Clear session data since registration failed
+                    session()->forget('onboarding_data');
+                    
+                    return redirect()->route('onboarding.step1')->with('error', 
+                        "The phone number '{$phoneToCheck}' is already registered with another account (User: {$existingPhone->name}). Please use a different phone number or contact support if this is your account."
+                    );
+                }
+            }
+
+            if (isset($onboardingData['org_name'])) {
+                $orgToCheck = $onboardingData['org_name'];
+                \Log::info('Checking for duplicate organization in step-by-step onboarding', ['org_name' => $orgToCheck]);
+                
+                $existingOrg = DB::selectOne("SELECT id, name FROM shulesoft.connect_organizations WHERE LOWER(name) = LOWER(?)", [$orgToCheck]);
+                if ($existingOrg) {
+                    \Log::error('DUPLICATE ORGANIZATION DETECTED IN STEP-BY-STEP ONBOARDING - BLOCKING', [
+                        'attempted_org_name' => $orgToCheck,
+                        'existing_org_id' => $existingOrg->id,
+                        'blocking_registration' => true
+                    ]);
+                    
+                    // Clear session data since registration failed
+                    session()->forget('onboarding_data');
+                    
+                    return redirect()->route('onboarding.step1')->with('error', 
+                        "An organization with the name '{$orgToCheck}' already exists. Please choose a different organization name."
+                    );
+                }
+            }
+
+            \Log::info('All validation checks passed in step-by-step onboarding - proceeding with creation');
+
             DB::beginTransaction();
 
             // Create organization
@@ -1502,6 +1625,24 @@ class SettingsController extends Controller
             // Create main user
             $defaultRole = DB::selectOne("SELECT id FROM shulesoft.connect_roles WHERE name = 'owner' LIMIT 1");
             $roleId = $defaultRole ? $defaultRole->id : 16;
+
+            // FINAL FAIL-SAFE CHECK for step-by-step onboarding
+            \Log::info('Final fail-safe check in step-by-step onboarding before user insertion', [
+                'email' => $onboardingData['contact_email'],
+                'phone' => $onboardingData['contact_phone']
+            ]);
+            
+            $finalEmailCheck = DB::selectOne("SELECT id, name FROM shulesoft.connect_users WHERE email = ?", [$onboardingData['contact_email']]);
+            if ($finalEmailCheck) {
+                throw new \Exception("CRITICAL STEP-BY-STEP: Duplicate email detected in final check - {$onboardingData['contact_email']} already exists for user {$finalEmailCheck->name} (ID: {$finalEmailCheck->id})");
+            }
+            
+            $finalPhoneCheck = DB::selectOne("SELECT id, name FROM shulesoft.connect_users WHERE phone = ?", [$onboardingData['contact_phone']]);
+            if ($finalPhoneCheck) {
+                throw new \Exception("CRITICAL STEP-BY-STEP: Duplicate phone detected in final check - {$onboardingData['contact_phone']} already exists for user {$finalPhoneCheck->name} (ID: {$finalPhoneCheck->id})");
+            }
+            
+            \Log::info('Final fail-safe check passed in step-by-step onboarding - proceeding with user insertion');
 
             $userId = DB::table('shulesoft.connect_users')->insertGetId([
                 'name' => $onboardingData['contact_name'],
@@ -1531,8 +1672,34 @@ class SettingsController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Onboarding error: ' . $e->getMessage());
-            return back()->with('error', 'An error occurred. Please try again.');
+            \Log::error('Step-by-step onboarding error: ' . $e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+                'session_data' => array_except($onboardingData ?? [], ['password', 'password_confirmation'])
+            ]);
+            
+            $errorMessage = 'An error occurred during account creation. Please try again.';
+            
+            // Check for specific error patterns
+            if (str_contains($e->getMessage(), 'CRITICAL') && str_contains($e->getMessage(), 'Duplicate email')) {
+                $errorMessage = 'This email address is already registered. Please use a different email address.';
+                // Clear session data since registration failed
+                session()->forget('onboarding_data');
+                return redirect()->route('onboarding.step1')->with('error', $errorMessage);
+            } elseif (str_contains($e->getMessage(), 'CRITICAL') && str_contains($e->getMessage(), 'Duplicate phone')) {
+                $errorMessage = 'This phone number is already registered. Please use a different phone number.';
+                // Clear session data since registration failed
+                session()->forget('onboarding_data');
+                return redirect()->route('onboarding.step1')->with('error', $errorMessage);
+            } elseif (str_contains($e->getMessage(), 'SQLSTATE[23505]')) {
+                $errorMessage = 'This information already exists in our system. Please check your email, phone number, or organization name.';
+                // Clear session data since registration failed
+                session()->forget('onboarding_data');
+                return redirect()->route('onboarding.step1')->with('error', $errorMessage);
+            }
+            
+            return back()->with('error', $errorMessage);
         }
     }
 
