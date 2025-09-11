@@ -672,6 +672,8 @@ class SettingsController extends Controller
     public function submitOnboarding(Request $request)
     {
         try {
+            \Log::info('Onboarding registration started', ['request_data' => $request->except(['password', 'password_confirmation'])]);
+            
             // Validate the incoming request
             $validated = $request->validate([
                 'org_name' => 'required|string|max:255|regex:/^[a-zA-Z0-9\s.&\'-]+$/|unique:shulesoft.connect_organizations,name',
@@ -758,10 +760,22 @@ class SettingsController extends Controller
             ]);
 
             // 3. Process schools based on usage status
-            $this->processSchoolsByUsageStatus($validated, $organizationId, $userId);
+            try {
+                $this->processSchoolsByUsageStatus($validated, $organizationId, $userId);
+                \Log::info('Schools processed successfully for organization: ' . $organizationId);
+            } catch (\Exception $e) {
+                \Log::error('Error processing schools for organization ' . $organizationId . ': ' . $e->getMessage());
+                // Continue - school processing issues shouldn't block account creation
+            }
 
             // 4. Send welcome notifications
-            $this->sendOnboardingNotifications($validated, $organizationId);
+            try {
+                $this->sendOnboardingNotifications($validated, $organizationId);
+                \Log::info('Notifications sent successfully for organization: ' . $organizationId);
+            } catch (\Exception $e) {
+                \Log::error('Error sending notifications for organization ' . $organizationId . ': ' . $e->getMessage());
+                // Continue - notification issues shouldn't block account creation
+            }
 
             // 5. Log the onboarding activity (if log table exists)
             try {
@@ -787,55 +801,116 @@ class SettingsController extends Controller
 
         } catch (\Illuminate\Validation\ValidationException $e) {
             DB::rollBack();
+            
+            $errors = $e->validator->errors()->all();
+            \Log::warning('Onboarding validation failed', [
+                'errors' => $errors,
+                'request_data' => $request->except(['password', 'password_confirmation'])
+            ]);
+            
+            // Create more user-friendly error message
+            $primaryError = $errors[0] ?? 'Validation failed';
+            $additionalErrors = count($errors) > 1 ? ' (and ' . (count($errors) - 1) . ' other validation error' . (count($errors) > 2 ? 's' : '') . ')' : '';
+            
             return response()->json([
                 'success' => false,
-                'message' => 'Validation failed: ' . implode(', ', $e->validator->errors()->all())
+                'message' => $primaryError . $additionalErrors,
+                'errors' => $errors,
+                'validation_fields' => array_keys($e->validator->errors()->toArray())
             ], 422);
 
         } catch (\Illuminate\Database\QueryException $e) {
             DB::rollBack();
-            \Log::error('Database error during onboarding: ' . $e->getMessage());
+            \Log::error('Database error during onboarding: ' . $e->getMessage(), [
+                'sql_state' => $e->getCode(),
+                'error_info' => $e->errorInfo ?? null
+            ]);
+            
+            $errorMessage = 'A database error occurred. Please try again.';
             
             // Handle specific database constraint violations
-            if (str_contains($e->getMessage(), 'connect_users_email_unique')) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'A user with this email address already exists. Please use a different email or contact support if this is your account.'
-                ], 422);
+            if (str_contains($e->getMessage(), 'connect_users_email_unique') || 
+                str_contains($e->getMessage(), 'users_email_unique')) {
+                $errorMessage = 'A user with this email address already exists. Please use a different email or contact support if this is your account.';
+            } elseif (str_contains($e->getMessage(), 'connect_users_phone_unique') || 
+                      str_contains($e->getMessage(), 'users_phone_unique')) {
+                $errorMessage = 'A user with this phone number already exists. Please use a different phone number or contact support if this is your account.';
+            } elseif (str_contains($e->getMessage(), 'connect_organizations_name_unique') || 
+                      str_contains($e->getMessage(), 'organizations_name_unique')) {
+                $errorMessage = 'An organization with this name already exists. Please choose a different name.';
+            } elseif (str_contains($e->getMessage(), 'connect_organizations_username_unique') || 
+                      str_contains($e->getMessage(), 'organizations_username_unique')) {
+                $errorMessage = 'There was a conflict with the organization username. Please try again or contact support.';
+            } elseif (str_contains($e->getMessage(), 'foreign key constraint')) {
+                $errorMessage = 'There was an error linking related data. Please contact support.';
+            } elseif (str_contains($e->getMessage(), 'column') && str_contains($e->getMessage(), 'cannot be null')) {
+                $errorMessage = 'Required information is missing. Please ensure all required fields are completed.';
+            } elseif (str_contains($e->getMessage(), 'Data too long for column')) {
+                $errorMessage = 'Some of the information provided is too long. Please shorten your input and try again.';
+            } elseif (str_contains($e->getMessage(), 'SQLSTATE[23505]')) {
+                $errorMessage = 'This information already exists in our system. Please check your email, phone number, or organization name.';
+            } elseif (str_contains($e->getMessage(), 'SQLSTATE[42S02]')) {
+                $errorMessage = 'Database structure issue detected. Please contact support.';
+            } elseif (str_contains($e->getMessage(), 'Connection refused') || 
+                      str_contains($e->getMessage(), 'server has gone away')) {
+                $errorMessage = 'Unable to connect to the database. Please try again in a few moments.';
             }
             
-            if (str_contains($e->getMessage(), 'connect_users_phone_unique')) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'A user with this phone number already exists. Please use a different phone number or contact support if this is your account.'
-                ], 422);
-            }
-            
-            if (str_contains($e->getMessage(), 'connect_organizations_name_unique')) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'An organization with this name already exists. Please choose a different name.'
-                ], 422);
-            }
-            
-            if (str_contains($e->getMessage(), 'connect_organizations_email_unique')) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'An organization with this email address already exists. Please use a different email.'
-                ], 422);
+            // Add debug info in development
+            if (config('app.debug') && config('app.env') !== 'production') {
+                $errorMessage .= ' [SQL Error: ' . $e->getCode() . ' - ' . substr($e->getMessage(), 0, 200) . '...]';
             }
 
             return response()->json([
                 'success' => false,
-                'message' => 'A database constraint error occurred. This might be due to duplicate information. Please check your details and try again.'
+                'message' => $errorMessage,
+                'error_code' => $e->getCode(),
+                'debug_info' => config('app.debug') ? [
+                    'sql_state' => $e->getCode(),
+                    'message' => substr($e->getMessage(), 0, 500)
+                ] : null
             ], 422);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Onboarding error: ' . $e->getMessage());
+            \Log::error('Onboarding error: ' . $e->getMessage(), [
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            // Provide more detailed error messages based on exception type
+            $errorMessage = 'An error occurred during account creation. Please try again.';
+            
+            // Check for specific error patterns and provide user-friendly messages
+            if (str_contains($e->getMessage(), 'SQLSTATE[23505]')) {
+                $errorMessage = 'This information already exists in our system. Please check your email, phone number, or organization name and try again.';
+            } elseif (str_contains($e->getMessage(), 'SQLSTATE[23000]')) {
+                $errorMessage = 'A data integrity error occurred. Please check that all required fields are filled correctly and try again.';
+            } elseif (str_contains($e->getMessage(), 'Connection refused') || str_contains($e->getMessage(), 'could not connect')) {
+                $errorMessage = 'Unable to connect to the database. Please try again in a few moments.';
+            } elseif (str_contains($e->getMessage(), 'timeout')) {
+                $errorMessage = 'The request timed out. Please try again.';
+            } elseif (str_contains($e->getMessage(), 'Mail') || str_contains($e->getMessage(), 'SMTP')) {
+                $errorMessage = 'Account created successfully, but there was an issue sending the welcome email. You can still log in normally.';
+            } elseif (str_contains($e->getMessage(), 'Role') || str_contains($e->getMessage(), 'role_id')) {
+                $errorMessage = 'There was an issue assigning user permissions. Please contact support.';
+            }
+            
+            // In development mode, include more detailed error information
+            if (config('app.debug') && config('app.env') !== 'production') {
+                $errorMessage .= ' [Debug: ' . $e->getMessage() . ' in ' . basename($e->getFile()) . ':' . $e->getLine() . ']';
+            }
+            
             return response()->json([
                 'success' => false,
-                'message' => 'An error occurred during account creation. Please try again.'
+                'message' => $errorMessage,
+                'error_type' => get_class($e),
+                'debug_info' => config('app.debug') ? [
+                    'message' => $e->getMessage(),
+                    'file' => basename($e->getFile()),
+                    'line' => $e->getLine()
+                ] : null
             ], 500);
         }
     }
@@ -951,9 +1026,16 @@ class SettingsController extends Controller
                 $message->to($validated['contact_email'], $validated['contact_name'])
                     ->subject('Welcome to ShuleSoft Group Connect - Registration Successful');
             });
+            \Log::info('Welcome email sent successfully to: ' . $validated['contact_email']);
         } catch (\Exception $e) {
-            \Log::error('Failed to send welcome email: ' . $e->getMessage());
+            \Log::error('Failed to send welcome email to ' . $validated['contact_email'] . ': ' . $e->getMessage(), [
+                'email' => $validated['contact_email'],
+                'error_type' => get_class($e),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
             // Continue with other notifications even if email fails
+            // Note: The main registration process will still succeed
         }
 
         // SMS welcome message to the organization
