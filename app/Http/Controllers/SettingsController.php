@@ -1536,7 +1536,7 @@ class SettingsController extends Controller
             $onboardingData = array_merge($onboardingData, $validated);
 
             \Log::info('Step-by-step onboarding completion started', [
-                'session_data' => array_except($onboardingData, ['password', 'password_confirmation']),
+                'session_data' => \Illuminate\Support\Arr::except($onboardingData, ['password', 'password_confirmation']),
                 'contact_email' => $onboardingData['contact_email'] ?? null,
                 'contact_phone' => $onboardingData['contact_phone'] ?? null,
                 'org_name' => $onboardingData['org_name'] ?? null
