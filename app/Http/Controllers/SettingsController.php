@@ -674,11 +674,11 @@ class SettingsController extends Controller
         try {
             // Validate the incoming request
             $validated = $request->validate([
-                'org_name' => 'required|string|max:255|regex:/^[a-zA-Z0-9\s.&\'-]+$/',
+                'org_name' => 'required|string|max:255|regex:/^[a-zA-Z0-9\s.&\'-]+$/|unique:shulesoft.connect_organizations,name',
                 'org_email' => 'required|email|max:255',
                 'contact_name' => 'required|string|max:255|regex:/^[a-zA-Z\s.\'-]+$/',
-                'contact_email' => 'required|email|max:255',
-                'contact_phone' => 'required|string|regex:/^[\+]?[0-9\s\-\(\)]{10,}$/',
+                'contact_email' => 'required|email|max:255|unique:shulesoft.connect_users,email',
+                'contact_phone' => 'required|string|regex:/^[\+]?[0-9\s\-\(\)]{10,}$/|unique:shulesoft.connect_users,phone',
                 'schools_count' => 'required|integer|min:2',
                 'usage_status' => 'required|in:all,some,none',
                 'password' => 'required|string|min:8|confirmed',
@@ -701,13 +701,38 @@ class SettingsController extends Controller
                 // 'new_schools.*.contact_person' => 'required_with:new_schools|string|max:255',
                 // 'new_schools.*.contact_email' => 'required_with:new_schools|email|max:255',
                 // 'new_schools.*.contact_phone' => 'required_with:new_schools|string|max:20',
+            ], [
+                'org_name.unique' => 'An organization with this name already exists.',
+                'contact_email.unique' => 'A user with this email address already exists.',
+                'contact_phone.unique' => 'A user with this phone number already exists.',
+                'org_name.regex' => 'Organization name can only contain letters, numbers, spaces, dots, ampersands, hyphens, and apostrophes.',
+                'contact_name.regex' => 'Contact name can only contain letters, spaces, dots, hyphens, and apostrophes.',
+                'contact_phone.regex' => 'Please enter a valid phone number.',
+                'schools_count.min' => 'You must manage at least 2 schools to use Group Connect.',
             ]);
+
+            // Additional database validation
+            $validationErrors = $this->validateOnboardingData($validated);
+            if (!empty($validationErrors)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed: ' . implode(', ', $validationErrors)
+                ], 422);
+            }
 
             DB::beginTransaction();
 
-            // 1. Create the organization with existing table structure
+            // 1. Generate unique username for organization
+            $baseUsername = strtolower(str_replace([' ', '.', '&', "'", '-'], '_', $validated['org_name']));
+            $baseUsername = preg_replace('/[^a-z0-9_]/', '', $baseUsername); // Remove any other special chars
+            $baseUsername = preg_replace('/_+/', '_', $baseUsername); // Replace multiple underscores with single
+            $baseUsername = trim($baseUsername, '_'); // Trim leading/trailing underscores
+            
+            $orgUsername = $this->generateUniqueOrgUsername($baseUsername);
+
+            // 2. Create the organization with existing table structure
             $organizationId = DB::table('shulesoft.connect_organizations')->insertGetId([
-                'username' => strtolower(str_replace(' ', '_', $validated['org_name'])) . '_' . time(),
+                'username' => $orgUsername,
                 'name' => $validated['org_name'],
                 'description' => "Organization created via onboarding wizard. Contact: {$validated['contact_name']} ({$validated['contact_email']}). Schools: {$validated['schools_count']}. Usage Status: {$validated['usage_status']}",
                 'is_active' => true,
@@ -765,6 +790,44 @@ class SettingsController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Validation failed: ' . implode(', ', $e->validator->errors()->all())
+            ], 422);
+
+        } catch (\Illuminate\Database\QueryException $e) {
+            DB::rollBack();
+            \Log::error('Database error during onboarding: ' . $e->getMessage());
+            
+            // Handle specific database constraint violations
+            if (str_contains($e->getMessage(), 'connect_users_email_unique')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'A user with this email address already exists. Please use a different email or contact support if this is your account.'
+                ], 422);
+            }
+            
+            if (str_contains($e->getMessage(), 'connect_users_phone_unique')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'A user with this phone number already exists. Please use a different phone number or contact support if this is your account.'
+                ], 422);
+            }
+            
+            if (str_contains($e->getMessage(), 'connect_organizations_name_unique')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'An organization with this name already exists. Please choose a different name.'
+                ], 422);
+            }
+            
+            if (str_contains($e->getMessage(), 'connect_organizations_email_unique')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'An organization with this email address already exists. Please use a different email.'
+                ], 422);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'A database constraint error occurred. This might be due to duplicate information. Please check your details and try again.'
             ], 422);
 
         } catch (\Exception $e) {
@@ -869,30 +932,40 @@ class SettingsController extends Controller
     }
 
     /**
-     * Send onboarding notifications
+     * Send onboarding notifications (Direct Email + SMS)
      */
     private function sendOnboardingNotifications($validated, $organizationId)
     {
-        // Welcome message to the organization
-        $welcomeMessage = "Dear {$validated['contact_name']},\n\n" .
-            "Welcome to ShuleSoft Group Connect! Your organization '{$validated['org_name']}' has been successfully registered.\n\n" .
-            "Your 30-day trial has started. You can now:\n" .
-            "• Manage your school network\n" .
-            "• Add team members\n" .
-            "• Configure school settings\n" .
-            "• Access comprehensive reports\n\n" .
-            "Login URL: " . url('/login') . "\n" .
-            "Email: {$validated['contact_email']}\n\n" .
-            "Need help? Contact our support team.\n\n" .
-            "Thank you,\nShuleSoft Team";
+        // Prepare email data for the welcome email
+        $welcomeEmailData = [
+            'contact_name' => $validated['contact_name'],
+            'org_name' => $validated['org_name'],
+            'contact_email' => $validated['contact_email'],
+            'login_url' => url('/login'),
+            'organization_id' => $organizationId
+        ];
 
+        // Send welcome email directly to the new user
+        try {
+            Mail::send('emails.welcome-registration', $welcomeEmailData, function ($message) use ($validated) {
+                $message->to($validated['contact_email'], $validated['contact_name'])
+                    ->subject('Welcome to ShuleSoft Group Connect - Registration Successful');
+            });
+        } catch (\Exception $e) {
+            \Log::error('Failed to send welcome email: ' . $e->getMessage());
+            // Continue with other notifications even if email fails
+        }
+
+        // SMS welcome message to the organization
+        $smsWelcomeMessage = "Dear {$validated['contact_name']}, Welcome to ShuleSoft Group Connect! Your organization '{$validated['org_name']}' has been successfully registered. Your 30-day trial has started. Login: " . url('/login') . " Email: {$validated['contact_email']}. Need help? Contact our support team. Thank you, ShuleSoft Team";
+
+        // Send SMS/WhatsApp to the user
         DB::insert("
             INSERT INTO shulesoft.sms (phone_number, body, sent_from, status, created_at)
-            VALUES (?, ?, 'email', 0, NOW()), (?, ?, 'sms', 0, NOW()), (?, ?, 'whatsapp', 0, NOW())
+            VALUES (?, ?, 'sms', 0, NOW()), (?, ?, 'whatsapp', 0, NOW())
         ", [
-            $validated['contact_email'], $welcomeMessage,
-            $validated['contact_phone'], $welcomeMessage,
-            $validated['contact_phone'], $welcomeMessage
+            $validated['contact_phone'], $smsWelcomeMessage,
+            $validated['contact_phone'], $smsWelcomeMessage
         ]);
 
         // Notification to ShuleSoft team
@@ -906,12 +979,30 @@ class SettingsController extends Controller
             "Trial Period: 30 days\n\n" .
             "Please follow up for onboarding support.";
 
+        // Send SMS/WhatsApp to ShuleSoft team
         DB::insert("
             INSERT INTO shulesoft.sms (phone_number, body, sent_from, status, created_at)
             VALUES (?, ?, 'sms', 0, NOW()), (?, ?, 'whatsapp', 0, NOW())
         ", [
             '0714825469', $staffMessage,
             '0714825469', $staffMessage
+        ]);
+
+        // Send email notifications to ShuleSoft team (queued via database)
+        DB::insert("
+            INSERT INTO shulesoft.email (body, subject, user_id, email, schema_name, created_at, status)
+            VALUES (?, ?, ?, ?, ?, NOW(), 0), (?, ?, ?, ?, ?, NOW(), 0)
+        ", [
+            $staffMessage, // body
+            "New Organization Registration - {$validated['org_name']}", // subject
+            null, // user_id
+            'admin@shulesoft.africa', // admin email
+            'shulesoft', // schema_name
+            $staffMessage, // body (copy for sales)
+            "New Organization Registration - {$validated['org_name']}", // subject
+            null, // user_id
+            'sales@shulesoft.africa', // sales email
+            'shulesoft' // schema_name
         ]);
     }
 
@@ -960,6 +1051,57 @@ class SettingsController extends Controller
     private function getAllSchoolUids()
     {
         return DB::select("SELECT uid FROM shulesoft.user WHERE usertype = 'school'");
+    }
+
+    /**
+     * Generate unique organization username
+     */
+    private function generateUniqueOrgUsername($baseUsername)
+    {
+        $username = $baseUsername;
+        $counter = 1;
+
+        // Check if base username exists
+        while (DB::selectOne("SELECT id FROM shulesoft.connect_organizations WHERE username = ?", [$username])) {
+            $username = $baseUsername . '_' . $counter;
+            $counter++;
+            
+            // Prevent infinite loop
+            if ($counter > 1000) {
+                $username = $baseUsername . '_' . time() . '_' . mt_rand(1000, 9999);
+                break;
+            }
+        }
+
+        return $username;
+    }
+
+    /**
+     * Additional validation for onboarding data
+     */
+    private function validateOnboardingData($validated)
+    {
+        $errors = [];
+
+        // Check for existing organization name (case-insensitive)
+        $existingOrg = DB::selectOne("SELECT id FROM shulesoft.connect_organizations WHERE LOWER(name) = LOWER(?)", [$validated['org_name']]);
+        if ($existingOrg) {
+            $errors[] = 'An organization with this name already exists.';
+        }
+
+        // Check for existing user email
+        $existingUserEmail = DB::selectOne("SELECT id FROM shulesoft.connect_users WHERE email = ?", [$validated['contact_email']]);
+        if ($existingUserEmail) {
+            $errors[] = 'A user with this email address already exists.';
+        }
+
+        // Check for existing user phone
+        $existingUserPhone = DB::selectOne("SELECT id FROM shulesoft.connect_users WHERE phone = ?", [$validated['contact_phone']]);
+        if ($existingUserPhone) {
+            $errors[] = 'A user with this phone number already exists.';
+        }
+
+        return $errors;
     }
 
 
@@ -1317,7 +1459,7 @@ class SettingsController extends Controller
         ];
 
         Mail::send('emails.demo-request', $emailData, function ($message) {
-            $message->to('sales@mail.shulesoft.co')
+            $message->to('sales@shulesoft.africa')
                 ->subject('New Demo Request - ShuleSoft Group Connect');
         });
     }
