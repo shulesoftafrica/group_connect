@@ -1560,7 +1560,7 @@ class SettingsController extends Controller
                     session()->forget('onboarding_data');
                     
                     return redirect()->route('onboarding.step1')->with('error', 
-                        "The email address '{$emailToCheck}' is already registered with another account (User: {$existingEmail->name}). Please use a different email address or contact support if this is your account."
+                        "The email address '{$emailToCheck}' is already registered with another account. Please use a different email address or contact support if this is your account."
                     );
                 }
             }

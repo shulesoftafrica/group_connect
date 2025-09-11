@@ -734,13 +734,13 @@
                         <h5><span class="step-number">1</span>Link Existing Schools</h5>
                         <p>If your schools are already using ShuleSoft:</p>
                         <ul>
-                            <li>Navigate to <strong>Settings & Control → School Management</strong></li>
-                            <li>Click <strong>"Add Existing School"</strong></li>
-                            <li>Enter the <strong>ShuleSoft School Code</strong></li>
-                            <li>Verify school details and confirm connection</li>
+                            <li>Navigate to <strong>Settings & Control → School Miscellaneous settings</strong></li>
+                            <li>Click <strong>"View Login Code"</strong></li>
+                            <li>Copy the <strong>ShuleSoft School Code provided</strong></li>
+                            <li>Go back to group connect and confirm connection</li>
                         </ul>
                         <div class="alert alert-info">
-                            <strong>School Code Format:</strong> Usually 6-8 characters (e.g., MVP001, SCH123)
+                            <strong>School Login Code Format:</strong> Usually 36  characters (e.g., b5d8945a-2c35-477f-bcxz-866806835852 )
                         </div>
                     </div>
 
@@ -823,7 +823,7 @@
                             <div class="feature-card">
                                 <h5><i class="bi bi-star text-warning me-2"></i>Paid Plan <span class="pricing-badge">Most Popular</span></h5>
                                 <ul>
-                                    <li><strong>Price:</strong> Tsh 50,000 per school per month</li>
+                                    <li><strong>Price:</strong> Standard to premium plan or Tsh 150,000 per school per month</li>
                                     <li><strong>AI Reports:</strong> Unlimited</li>
                                     <li><strong>Schools:</strong> Unlimited</li>
                                     <li><strong>Advanced Features:</strong> All premium features</li>
@@ -881,9 +881,9 @@
                     <div class="alert alert-info">
                         <h5><i class="bi bi-calculator me-2"></i>Cost Calculator</h5>
                         <p><strong>Example:</strong> For 5 schools</p>
-                        <p>Monthly: 5 × Tsh 50,000 = <strong>Tsh 250,000</strong></p>
-                        <p>Annual: Tsh 250,000 × 12 × 0.85 = <strong>Tsh 2,550,000</strong></p>
-                        <p class="mb-0"><small>Annual billing saves you Tsh 450,000!</small></p>
+                        <p>Monthly: 5 × Tsh 150,000 = <strong>Tsh 750,000</strong></p>
+                        <p>Annual: Tsh 750,000 × 12 × 0.85 = <strong>Tsh 7,650,000</strong></p>
+                        <p class="mb-0"><small>Annual billing saves you Tsh 1,350,000!</small></p>
                     </div>
                     
                     <div class="screenshot-placeholder">

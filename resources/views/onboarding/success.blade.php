@@ -102,11 +102,11 @@
                         <div class="col-md-6">
                             <p class="mb-2">
                                 <i class="fas fa-phone me-2 text-primary"></i>
-                                <strong>Phone:</strong> +254 714 825 469
+                                <strong>Phone:</strong> +255 748 771 580
                             </p>
                             <p class="mb-2">
                                 <i class="fas fa-envelope me-2 text-primary"></i>
-                                <strong>Email:</strong> support@shulesoft.com
+                                <strong>Email:</strong> support@shulesoft.africa
                             </p>
                         </div>
                         <div class="col-md-6">
@@ -131,7 +131,7 @@
             Login to Your Account
         </a>
         
-        <a href="https://shulesoft.com/group-connect" target="_blank" class="btn btn-outline-primary btn-lg">
+        <a href="https://shulesoft.group/user-guide" target="_blank" class="btn btn-outline-primary btn-lg">
             <i class="fas fa-book me-2"></i>
             View User Guide
         </a>
