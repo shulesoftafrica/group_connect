@@ -1305,24 +1305,6 @@ class SettingsController extends Controller
         return $errors;
     }
 
-    /**
-     * Extract constraint name from database error message
-     */
-    private function extractConstraintName($errorMessage)
-    {
-        // Pattern to match constraint names in PostgreSQL error messages
-        if (preg_match('/constraint "([^"]+)"/', $errorMessage, $matches)) {
-            return $matches[1];
-        }
-        
-        // Pattern for MySQL constraint names
-        if (preg_match('/Duplicate entry .+ for key \'([^\']+)\'/', $errorMessage, $matches)) {
-            return $matches[1];
-        }
-        
-        return null;
-    }
-
 
     private function sendBulkMessage($schools, $content, $type)
     {
