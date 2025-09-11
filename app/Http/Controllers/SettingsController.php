@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use App\Models\User;
 use App\Models\School;
 use App\Models\Organization;
@@ -672,37 +673,118 @@ class SettingsController extends Controller
     public function submitOnboarding(Request $request)
     {
         try {
-            \Log::info('Onboarding registration started', ['request_data' => $request->except(['password', 'password_confirmation'])]);
+            \Log::info('Onboarding registration started', [
+                'request_data' => $request->except(['password', 'password_confirmation']),
+                'contact_email' => $request->input('contact_email'),
+                'contact_phone' => $request->input('contact_phone'),
+                'org_name' => $request->input('org_name')
+            ]);
+            
+            // Pre-validation check to catch duplicates that Laravel validation might miss
+            \Log::info('Starting pre-validation database checks');
+            
+            if ($request->filled('contact_email')) {
+                $existingEmail = DB::selectOne("SELECT id, name FROM shulesoft.connect_users WHERE email = ?", [$request->contact_email]);
+                if ($existingEmail) {
+                    \Log::warning('Duplicate email detected in pre-validation', [
+                        'email' => $request->contact_email,
+                        'existing_user_id' => $existingEmail->id,
+                        'existing_user_name' => $existingEmail->name
+                    ]);
+                    
+                    return response()->json([
+                        'success' => false,
+                        'message' => "The email address '{$request->contact_email}' is already registered with another account. Please use a different email address or contact support if this is your account.",
+                        'field' => 'contact_email',
+                        'error_type' => 'duplicate_email'
+                    ], 422);
+                }
+            }
+            
+            if ($request->filled('contact_phone')) {
+                $existingPhone = DB::selectOne("SELECT id, name FROM shulesoft.connect_users WHERE phone = ?", [$request->contact_phone]);
+                if ($existingPhone) {
+                    \Log::warning('Duplicate phone detected in pre-validation', [
+                        'phone' => $request->contact_phone,
+                        'existing_user_id' => $existingPhone->id,
+                        'existing_user_name' => $existingPhone->name
+                    ]);
+                    
+                    return response()->json([
+                        'success' => false,
+                        'message' => "The phone number '{$request->contact_phone}' is already registered with another account. Please use a different phone number or contact support if this is your account.",
+                        'field' => 'contact_phone',
+                        'error_type' => 'duplicate_phone'
+                    ], 422);
+                }
+            }
+            
+            if ($request->filled('org_name')) {
+                $existingOrg = DB::selectOne("SELECT id, name FROM shulesoft.connect_organizations WHERE LOWER(name) = LOWER(?)", [$request->org_name]);
+                if ($existingOrg) {
+                    \Log::warning('Duplicate organization name detected in pre-validation', [
+                        'org_name' => $request->org_name,
+                        'existing_org_id' => $existingOrg->id
+                    ]);
+                    
+                    return response()->json([
+                        'success' => false,
+                        'message' => "An organization with the name '{$request->org_name}' already exists. Please choose a different organization name.",
+                        'field' => 'org_name',
+                        'error_type' => 'duplicate_organization'
+                    ], 422);
+                }
+            }
+            
+            \Log::info('Pre-validation checks passed, proceeding with Laravel validation');
             
             // Validate the incoming request
             $validated = $request->validate([
-                'org_name' => 'required|string|max:255|regex:/^[a-zA-Z0-9\s.&\'-]+$/|unique:shulesoft.connect_organizations,name',
-                'org_email' => 'required|email|max:255',
-                'contact_name' => 'required|string|max:255|regex:/^[a-zA-Z\s.\'-]+$/',
-                'contact_email' => 'required|email|max:255|unique:shulesoft.connect_users,email',
-                'contact_phone' => 'required|string|regex:/^[\+]?[0-9\s\-\(\)]{10,}$/|unique:shulesoft.connect_users,phone',
-                'schools_count' => 'required|integer|min:2',
-                'usage_status' => 'required|in:all,some,none',
-                'password' => 'required|string|min:8|confirmed',
-                
-                // Dynamic school data validation
-                // 'shulesoft_schools' => 'array',
-                // 'shulesoft_schools.*.login_code' => 'string|max:50',
-                // 'mixed_shulesoft_schools' => 'array',
-                // 'mixed_shulesoft_schools.*.login_code' => 'string|max:50',
-                // 'mixed_shulesoft_schools.*.school_name' => 'string|max:255',
-                // 'non_shulesoft_schools' => 'array',
-                // 'non_shulesoft_schools.*.school_name' => 'required_with:non_shulesoft_schools|string|max:255',
-                // 'non_shulesoft_schools.*.location' => 'required_with:non_shulesoft_schools|string|max:255',
-                // 'non_shulesoft_schools.*.contact_person' => 'required_with:non_shulesoft_schools|string|max:255',
-                // 'non_shulesoft_schools.*.contact_email' => 'required_with:non_shulesoft_schools|email|max:255',
-                // 'non_shulesoft_schools.*.contact_phone' => 'required_with:non_shulesoft_schools|string|max:20',
-                // 'new_schools' => 'array',
-                // 'new_schools.*.school_name' => 'required_with:new_schools|string|max:255',
-                // 'new_schools.*.location' => 'required_with:new_schools|string|max:255',
-                // 'new_schools.*.contact_person' => 'required_with:new_schools|string|max:255',
-                // 'new_schools.*.contact_email' => 'required_with:new_schools|email|max:255',
-                // 'new_schools.*.contact_phone' => 'required_with:new_schools|string|max:20',
+                'org_name' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    'regex:/^[a-zA-Z0-9\s.&\'-]+$/',
+                    Rule::unique('shulesoft.connect_organizations', 'name')
+                ],
+                'org_email' => [
+                    'required',
+                    'email',
+                    'max:255'
+                ],
+                'contact_name' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    'regex:/^[a-zA-Z\s.\'-]+$/'
+                ],
+                'contact_email' => [
+                    'required',
+                    'email',
+                    'max:255',
+                    Rule::unique('shulesoft.connect_users', 'email')
+                ],
+                'contact_phone' => [
+                    'required',
+                    'string',
+                    'regex:/^[\+]?[0-9\s\-\(\)]{10,}$/',
+                    Rule::unique('shulesoft.connect_users', 'phone')
+                ],
+                'schools_count' => [
+                    'required',
+                    'integer',
+                    'min:2'
+                ],
+                'usage_status' => [
+                    'required',
+                    'in:all,some,none'
+                ],
+                'password' => [
+                    'required',
+                    'string',
+                    'min:8',
+                    'confirmed'
+                ]
             ], [
                 'org_name.unique' => 'An organization with this name already exists.',
                 'contact_email.unique' => 'A user with this email address already exists.',
@@ -713,14 +795,27 @@ class SettingsController extends Controller
                 'schools_count.min' => 'You must manage at least 2 schools to use Group Connect.',
             ]);
 
-            // Additional database validation
+            // Additional database validation with enhanced logging
             $validationErrors = $this->validateOnboardingData($validated);
             if (!empty($validationErrors)) {
+                \Log::warning('Additional validation failed during onboarding', [
+                    'errors' => $validationErrors,
+                    'contact_email' => $validated['contact_email'],
+                    'contact_phone' => $validated['contact_phone'],
+                    'org_name' => $validated['org_name']
+                ]);
+                
                 return response()->json([
                     'success' => false,
-                    'message' => 'Validation failed: ' . implode(', ', $validationErrors)
+                    'message' => 'Validation failed: ' . implode(', ', $validationErrors),
+                    'validation_errors' => $validationErrors
                 ], 422);
             }
+
+            \Log::info('All validation passed, starting database transaction', [
+                'contact_email' => $validated['contact_email'],
+                'org_name' => $validated['org_name']
+            ]);
 
             DB::beginTransaction();
 
@@ -823,51 +918,75 @@ class SettingsController extends Controller
             DB::rollBack();
             \Log::error('Database error during onboarding: ' . $e->getMessage(), [
                 'sql_state' => $e->getCode(),
-                'error_info' => $e->errorInfo ?? null
+                'error_info' => $e->errorInfo ?? null,
+                'request_email' => $request->input('contact_email'),
+                'request_phone' => $request->input('contact_phone'),
+                'request_org' => $request->input('org_name')
             ]);
             
             $errorMessage = 'A database error occurred. Please try again.';
             
-            // Handle specific database constraint violations
-            if (str_contains($e->getMessage(), 'connect_users_email_unique') || 
-                str_contains($e->getMessage(), 'users_email_unique')) {
-                $errorMessage = 'A user with this email address already exists. Please use a different email or contact support if this is your account.';
-            } elseif (str_contains($e->getMessage(), 'connect_users_phone_unique') || 
-                      str_contains($e->getMessage(), 'users_phone_unique')) {
-                $errorMessage = 'A user with this phone number already exists. Please use a different phone number or contact support if this is your account.';
-            } elseif (str_contains($e->getMessage(), 'connect_organizations_name_unique') || 
-                      str_contains($e->getMessage(), 'organizations_name_unique')) {
-                $errorMessage = 'An organization with this name already exists. Please choose a different name.';
-            } elseif (str_contains($e->getMessage(), 'connect_organizations_username_unique') || 
-                      str_contains($e->getMessage(), 'organizations_username_unique')) {
-                $errorMessage = 'There was a conflict with the organization username. Please try again or contact support.';
-            } elseif (str_contains($e->getMessage(), 'foreign key constraint')) {
-                $errorMessage = 'There was an error linking related data. Please contact support.';
-            } elseif (str_contains($e->getMessage(), 'column') && str_contains($e->getMessage(), 'cannot be null')) {
-                $errorMessage = 'Required information is missing. Please ensure all required fields are completed.';
-            } elseif (str_contains($e->getMessage(), 'Data too long for column')) {
+            // Handle specific database constraint violations with better pattern matching
+            $exceptionMessage = $e->getMessage();
+            
+            if (str_contains($exceptionMessage, 'connect_users_email_unique') || 
+                (str_contains($exceptionMessage, 'duplicate key') && str_contains($exceptionMessage, 'email'))) {
+                
+                // Extract the email from the error message if possible
+                $email = $request->input('contact_email');
+                $errorMessage = "The email address '{$email}' is already registered with another account. Please use a different email address or contact support if this is your account.";
+                
+            } elseif (str_contains($exceptionMessage, 'connect_users_phone_unique') || 
+                      (str_contains($exceptionMessage, 'duplicate key') && str_contains($exceptionMessage, 'phone'))) {
+                
+                $phone = $request->input('contact_phone');
+                $errorMessage = "The phone number '{$phone}' is already registered with another account. Please use a different phone number or contact support if this is your account.";
+                
+            } elseif (str_contains($exceptionMessage, 'connect_organizations_name_unique') || 
+                      (str_contains($exceptionMessage, 'duplicate key') && str_contains($exceptionMessage, 'name'))) {
+                
+                $orgName = $request->input('org_name');
+                $errorMessage = "An organization with the name '{$orgName}' already exists. Please choose a different organization name.";
+                
+            } elseif (str_contains($exceptionMessage, 'connect_organizations_username_unique') || 
+                      (str_contains($exceptionMessage, 'duplicate key') && str_contains($exceptionMessage, 'username'))) {
+                
+                $errorMessage = 'There was a conflict with the organization username. Please try a different organization name or contact support.';
+                
+            } elseif (str_contains($exceptionMessage, 'foreign key constraint')) {
+                $errorMessage = 'There was an error linking related data. Please contact support with error code: FK_CONSTRAINT.';
+                
+            } elseif (str_contains($exceptionMessage, 'column') && str_contains($exceptionMessage, 'cannot be null')) {
+                $errorMessage = 'Required information is missing. Please ensure all required fields are completed and try again.';
+                
+            } elseif (str_contains($exceptionMessage, 'Data too long for column')) {
                 $errorMessage = 'Some of the information provided is too long. Please shorten your input and try again.';
-            } elseif (str_contains($e->getMessage(), 'SQLSTATE[23505]')) {
-                $errorMessage = 'This information already exists in our system. Please check your email, phone number, or organization name.';
-            } elseif (str_contains($e->getMessage(), 'SQLSTATE[42S02]')) {
-                $errorMessage = 'Database structure issue detected. Please contact support.';
-            } elseif (str_contains($e->getMessage(), 'Connection refused') || 
-                      str_contains($e->getMessage(), 'server has gone away')) {
+                
+            } elseif (str_contains($exceptionMessage, 'SQLSTATE[23505]') || str_contains($exceptionMessage, 'duplicate key')) {
+                $errorMessage = 'This information already exists in our system. Please check your email, phone number, or organization name and use different values.';
+                
+            } elseif (str_contains($exceptionMessage, 'SQLSTATE[42S02]')) {
+                $errorMessage = 'Database structure issue detected. Please contact support with error code: TABLE_NOT_FOUND.';
+                
+            } elseif (str_contains($exceptionMessage, 'Connection refused') || 
+                      str_contains($exceptionMessage, 'server has gone away')) {
                 $errorMessage = 'Unable to connect to the database. Please try again in a few moments.';
             }
             
             // Add debug info in development
             if (config('app.debug') && config('app.env') !== 'production') {
-                $errorMessage .= ' [SQL Error: ' . $e->getCode() . ' - ' . substr($e->getMessage(), 0, 200) . '...]';
+                $errorMessage .= ' [SQL Error: ' . $e->getCode() . ' - ' . substr($exceptionMessage, 0, 200) . '...]';
             }
 
             return response()->json([
                 'success' => false,
                 'message' => $errorMessage,
                 'error_code' => $e->getCode(),
+                'constraint_violation' => str_contains($exceptionMessage, 'duplicate key') ? 'duplicate_entry' : null,
                 'debug_info' => config('app.debug') ? [
                     'sql_state' => $e->getCode(),
-                    'message' => substr($e->getMessage(), 0, 500)
+                    'message' => substr($exceptionMessage, 0, 500),
+                    'constraint' => $this->extractConstraintName($exceptionMessage)
                 ] : null
             ], 422);
 
@@ -1184,6 +1303,24 @@ class SettingsController extends Controller
         }
 
         return $errors;
+    }
+
+    /**
+     * Extract constraint name from database error message
+     */
+    private function extractConstraintName($errorMessage)
+    {
+        // Pattern to match constraint names in PostgreSQL error messages
+        if (preg_match('/constraint "([^"]+)"/', $errorMessage, $matches)) {
+            return $matches[1];
+        }
+        
+        // Pattern for MySQL constraint names
+        if (preg_match('/Duplicate entry .+ for key \'([^\']+)\'/', $errorMessage, $matches)) {
+            return $matches[1];
+        }
+        
+        return null;
     }
 
 
@@ -1571,5 +1708,60 @@ class SettingsController extends Controller
     public function demoApprovalSuccess()
     {
         return view('demo.approval-success');
+    }
+
+    /**
+     * Extract constraint name from PostgreSQL error message
+     */
+    private function extractConstraintName($errorMessage)
+    {
+        // Look for constraint name in PostgreSQL error message format
+        if (preg_match('/violates unique constraint "([^"]+)"/', $errorMessage, $matches)) {
+            return $matches[1];
+        }
+        
+        if (preg_match('/constraint "([^"]+)"/', $errorMessage, $matches)) {
+            return $matches[1];
+        }
+        
+        return null;
+    }
+
+    /**
+     * Get user-friendly error message based on constraint name
+     */
+    private function getConstraintErrorMessage($constraintName, $errorMessage)
+    {
+        switch ($constraintName) {
+            case 'connect_users_email_unique':
+            case 'users_email_unique':
+                return 'A user with this email address already exists. Please use a different email or contact support if this is your account.';
+                
+            case 'connect_users_phone_unique':
+            case 'users_phone_unique':
+                return 'A user with this phone number already exists. Please use a different phone number or contact support if this is your account.';
+                
+            case 'connect_organizations_name_unique':
+            case 'organizations_name_unique':
+                return 'An organization with this name already exists. Please choose a different name.';
+                
+            case 'connect_organizations_username_unique':
+            case 'organizations_username_unique':
+                return 'There was a conflict with the organization username. Please try again or contact support.';
+                
+            default:
+                // Check for general patterns if specific constraint not matched
+                if (str_contains($errorMessage, 'email') && str_contains($errorMessage, 'unique')) {
+                    return 'This email address is already registered. Please use a different email.';
+                }
+                if (str_contains($errorMessage, 'phone') && str_contains($errorMessage, 'unique')) {
+                    return 'This phone number is already registered. Please use a different phone number.';
+                }
+                if (str_contains($errorMessage, 'name') && str_contains($errorMessage, 'unique')) {
+                    return 'This name is already taken. Please choose a different name.';
+                }
+                
+                return 'A database constraint error occurred. This might be due to duplicate information. Please check your details and try again.';
+        }
     }
 }
