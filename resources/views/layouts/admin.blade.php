@@ -260,6 +260,28 @@
             font-weight: 600;
         }
 
+        /* Phase 2: Disabled Navigation Features */
+        .sidebar .disabled-feature {
+            color: var(--sidebar-text);
+            border-radius: 0.5rem;
+            margin: 0.2rem 0.5rem;
+            padding: 0.75rem 1rem;
+            position: relative;
+            cursor: not-allowed;
+            background-color: rgba(255, 255, 255, 0.05);
+            border: 1px dashed rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+        }
+        
+        .sidebar .disabled-feature:hover {
+            background-color: rgba(255, 255, 255, 0.08);
+        }
+        
+        .sidebar .disabled-feature .bi-lock-fill {
+            font-size: 0.75rem;
+        }
+
         /* ===== MAIN CONTENT ===== */
         .main-content {
             margin-left: var(--sidebar-width);
@@ -852,7 +874,8 @@
                     </a>
                 </li>
                 
-                @if(auth()->user()->hasModuleAccess('schools'))
+                {{-- Phase 2: Progressive Feature Disclosure --}}
+                @if(auth()->user()->hasProgressiveModuleAccess('schools'))
                 <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('schools.*') ? 'active' : '' }}" href="{{ route('schools.index') }}">
                         <i class="bi bi-building me-2"></i>
@@ -861,71 +884,109 @@
                 </li>
                 @endif
                 
-                @if(auth()->user()->hasModuleAccess('academics'))
+                @if(auth()->user()->hasProgressiveModuleAccess('academics'))
                 <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('academics.*') ? 'active' : '' }}" href="{{ route('academics.index') }}">
                         <i class="bi bi-book me-2"></i>
                         Academics
                     </a>
                 </li>
+                @elseif(auth()->user()->hasModuleAccess('academics'))
+                <li class="nav-item">
+                    <div class="nav-link disabled-feature" title="Add at least 1 school to unlock">
+                        <i class="bi bi-book me-2 opacity-50"></i>
+                        <span class="opacity-50">Academics</span>
+                        <i class="bi bi-lock-fill ms-auto text-warning small"></i>
+                    </div>
+                </li>
                 @endif
                 
-                @if(auth()->user()->hasModuleAccess('operations'))
+                @if(auth()->user()->hasProgressiveModuleAccess('operations'))
                 <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('operations.*') ? 'active' : '' }}" href="{{ route('operations.index') }}">
                         <i class="bi bi-gear me-2"></i>
                         Operations
                     </a>
                 </li>
+                @elseif(auth()->user()->hasModuleAccess('operations'))
+                <li class="nav-item">
+                    <div class="nav-link disabled-feature" title="Add at least 1 school to unlock">
+                        <i class="bi bi-gear me-2 opacity-50"></i>
+                        <span class="opacity-50">Operations</span>
+                        <i class="bi bi-lock-fill ms-auto text-warning small"></i>
+                    </div>
+                </li>
                 @endif
                 
-                @if(auth()->user()->hasModuleAccess('finance'))
+                @if(auth()->user()->hasProgressiveModuleAccess('finance'))
                 <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('finance.*') ? 'active' : '' }}" href="{{ route('finance.index') }}">
                         <i class="bi bi-calculator me-2"></i>
                         Finance & Accounts
                     </a>
                 </li>
+                @elseif(auth()->user()->hasModuleAccess('finance'))
+                <li class="nav-item">
+                    <div class="nav-link disabled-feature" title="Add at least 1 school to unlock">
+                        <i class="bi bi-calculator me-2 opacity-50"></i>
+                        <span class="opacity-50">Finance & Accounts</span>
+                        <i class="bi bi-lock-fill ms-auto text-warning small"></i>
+                    </div>
+                </li>
                 @endif
                 
-                @if(auth()->user()->hasModuleAccess('hr'))
+                @if(auth()->user()->hasProgressiveModuleAccess('hr'))
                 <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('hr.*') ? 'active' : '' }}" href="{{ route('hr.index') }}">
                         <i class="bi bi-people me-2"></i>
                         Human Resources
                     </a>
                 </li>
+                @elseif(auth()->user()->hasModuleAccess('hr'))
+                <li class="nav-item">
+                    <div class="nav-link disabled-feature" title="Add at least 1 school to unlock">
+                        <i class="bi bi-people me-2 opacity-50"></i>
+                        <span class="opacity-50">Human Resources</span>
+                        <i class="bi bi-lock-fill ms-auto text-warning small"></i>
+                    </div>
+                </li>
                 @endif
                 
-                @if(auth()->user()->hasModuleAccess('communications'))
+                @if(auth()->user()->hasProgressiveModuleAccess('communications'))
                 <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('communications.*') ? 'active' : '' }}" href="{{ route('communications.index') }}">
                         <i class="bi bi-chat-dots me-2"></i>
                         Communications
                     </a>
                 </li>
+                @elseif(auth()->user()->hasModuleAccess('communications'))
+                <li class="nav-item">
+                    <div class="nav-link disabled-feature" title="Add at least 1 school to unlock">
+                        <i class="bi bi-chat-dots me-2 opacity-50"></i>
+                        <span class="opacity-50">Communications</span>
+                        <i class="bi bi-lock-fill ms-auto text-warning small"></i>
+                    </div>
+                </li>
                 @endif
                 
-                <!-- @if(auth()->user()->hasModuleAccess('digital_learning'))
-                <li class="nav-item">
-                    <a class="nav-link {{ request()->routeIs('digital-learning.*') ? 'active' : '' }}" href="{{ route('digital-learning.index') }}">
-                        <i class="fas fa-robot me-2"></i>
-                        AI Digital Learning
-                    </a>
-                </li>
-                @endif -->
-          
-                
-                @if(auth()->user()->hasModuleAccess('insights'))
+                @if(auth()->user()->hasProgressiveModuleAccess('insights'))
                 <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('insights.*') ? 'active' : '' }}" href="{{ route('insights.dashboard') }}">
                         <i class="fas fa-brain me-2"></i>
                         Executive Insights
                     </a>
                 </li>
+                @elseif(auth()->user()->hasModuleAccess('insights'))
+                <li class="nav-item">
+                    <div class="nav-link disabled-feature" title="Add more schools or wait for insights to unlock">
+                        <i class="fas fa-brain me-2 opacity-50"></i>
+                        <span class="opacity-50">Executive Insights</span>
+                        <i class="bi bi-lock-fill ms-auto text-info small"></i>
+                    </div>
+                </li>
                 @endif
                 
-                @if(auth()->user()->hasModuleAccess('settings'))
+                @if(auth()->user()->hasProgressiveModuleAccess('settings'))
                 <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('settings.*') ? 'active' : '' }}" href="{{ route('settings.index') }}">
                         <i class="bi bi-gear-wide-connected me-2"></i>
@@ -934,12 +995,20 @@
                 </li>
                 @endif
                 
-                @if(auth()->user()->hasModuleAccess('reports'))
+                @if(auth()->user()->hasProgressiveModuleAccess('reports'))
                 <li class="nav-item">
                     <a class="nav-link {{ request()->routeIs('reports.*') ? 'active' : '' }}" href="{{ route('insights.dashboard') }}">
                         <i class="bi bi-graph-up me-2"></i>
                       AI  Reports & Insights
                     </a>
+                </li>
+                @elseif(auth()->user()->hasModuleAccess('reports'))
+                <li class="nav-item">
+                    <div class="nav-link disabled-feature" title="Add at least 1 school to unlock">
+                        <i class="bi bi-graph-up me-2 opacity-50"></i>
+                        <span class="opacity-50">AI Reports & Insights</span>
+                        <i class="bi bi-lock-fill ms-auto text-warning small"></i>
+                    </div>
                 </li>
                 @endif
             </ul>

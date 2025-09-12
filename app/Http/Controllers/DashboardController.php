@@ -20,6 +20,16 @@ class DashboardController extends Controller
     {
         $user = Auth::user();
         $schools = $this->getUserSchools($user);
+        
+        // Phase 2: Enhanced UX - Check user onboarding status
+        $userOnboardingStatus = $this->getUserOnboardingStatus($user, $schools);
+        
+        // If user is in getting started mode, show simplified dashboard
+        if ($userOnboardingStatus['is_getting_started']) {
+            return $this->showGettingStartedDashboard($user, $userOnboardingStatus);
+        }
+        
+        // Regular dashboard for established users
         $schemaNames = $this->getSchemaNames($schools);
 
         $totalStudents = $this->getTotalStudents($schemaNames);
@@ -227,6 +237,141 @@ class DashboardController extends Controller
                 'total_amount' => $totalAmount,
             ];
         });
+    }
+
+    /**
+     * Phase 2: Determine user onboarding status and readiness
+     */
+    private function getUserOnboardingStatus($user, $schools)
+    {
+        $schoolCount = $schools->count();
+        $daysSinceRegistration = now()->diffInDays($user->created_at);
+        
+        // Check for pending school requests
+        $pendingSchoolRequests = \DB::table('shulesoft.school_creation_requests')
+            ->where('connect_user_id', $user->id)
+            ->where('status', 'pending')
+            ->count();
+        
+        // Determine if user is in "getting started" mode
+        $isGettingStarted = (
+            $schoolCount <= 1 || // 1 or fewer active schools
+            $daysSinceRegistration <= 7 || // Registered within last 7 days
+            $pendingSchoolRequests > 0 // Has pending school requests
+        );
+        
+        return [
+            'is_getting_started' => $isGettingStarted,
+            'school_count' => $schoolCount,
+            'days_since_registration' => $daysSinceRegistration,
+            'pending_school_requests' => $pendingSchoolRequests,
+            'setup_completion_percentage' => $this->calculateSetupCompletion($user, $schools),
+            'next_steps' => $this->getNextSteps($user, $schools, $pendingSchoolRequests)
+        ];
+    }
+
+    /**
+     * Phase 2: Calculate setup completion percentage
+     */
+    private function calculateSetupCompletion($user, $schools)
+    {
+        $completedSteps = 0;
+        $totalSteps = 5;
+
+        // Step 1: Account created
+        if ($user->created_at) $completedSteps++;
+        
+        // Step 2: Email verified
+        if ($user->email_verified_at) $completedSteps++;
+        
+        // Step 3: Has at least one school
+        if ($schools->count() > 0) $completedSteps++;
+        
+        // Step 4: Profile completed (has phone)
+        if ($user->phone) $completedSteps++;
+        
+        // Step 5: Organization setup
+        if ($user->connect_organization_id) $completedSteps++;
+
+        return round(($completedSteps / $totalSteps) * 100);
+    }
+
+    /**
+     * Phase 2: Get personalized next steps for user
+     */
+    private function getNextSteps($user, $schools, $pendingSchoolRequests)
+    {
+        $nextSteps = [];
+        
+        if ($schools->count() === 0) {
+            $nextSteps[] = [
+                'title' => 'Add Your First School',
+                'description' => 'Connect your first school to start using the platform',
+                'action_url' => route('onboarding.start'),
+                'action_text' => 'Add School',
+                'priority' => 'high',
+                'icon' => 'bi-building'
+            ];
+        }
+        
+        if ($pendingSchoolRequests > 0) {
+            $nextSteps[] = [
+                'title' => "Track School Setup Progress",
+                'description' => "You have {$pendingSchoolRequests} school(s) being set up by our team",
+                'action_url' => route('settings.schools'),
+                'action_text' => 'View Status',
+                'priority' => 'medium',
+                'icon' => 'bi-clock'
+            ];
+        }
+        
+        if (!$user->phone) {
+            $nextSteps[] = [
+                'title' => 'Complete Your Profile',
+                'description' => 'Add your phone number for better security and notifications',
+                'action_url' => route('profile.edit'),
+                'action_text' => 'Update Profile',
+                'priority' => 'low',
+                'icon' => 'bi-person'
+            ];
+        }
+        
+        if ($schools->count() > 0 && $schools->count() < 3) {
+            $nextSteps[] = [
+                'title' => 'Add More Schools',
+                'description' => 'Connect additional schools to your organization',
+                'action_url' => route('settings.schools'),
+                'action_text' => 'Add Schools',
+                'priority' => 'low',
+                'icon' => 'bi-plus-circle'
+            ];
+        }
+
+        return $nextSteps;
+    }
+
+    /**
+     * Phase 2: Show getting started dashboard for new users
+     */
+    private function showGettingStartedDashboard($user, $onboardingStatus)
+    {
+        // Get basic stats even for new users (may be limited data)
+        $schools = $this->getUserSchools($user);
+        $schemaNames = $this->getSchemaNames($schools);
+        
+        $basicStats = [
+            'total_schools' => $schools->count(),
+            'active_schools' => count($schemaNames),
+            'total_students' => $this->getTotalStudents($schemaNames),
+            'pending_requests' => $onboardingStatus['pending_school_requests']
+        ];
+
+        return view('dashboard-getting-started', compact(
+            'user',
+            'onboardingStatus', 
+            'schools',
+            'basicStats'
+        ));
     }
 
     public function getExamResults($schemaNames)

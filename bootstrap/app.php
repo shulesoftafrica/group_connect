@@ -4,6 +4,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use \Inspector\Laravel\Middleware\WebRequestMonitoring;
+use App\Http\Middleware\RequireSchoolAccess;
 
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -16,6 +17,11 @@ return Application::configure(basePath: dirname(__DIR__))
              // Append the middleware
         $middleware->appendToGroup('web', WebRequestMonitoring::class)
             ->appendToGroup('api', WebRequestMonitoring::class);
+            
+        // Register school access middleware
+        $middleware->alias([
+            'require.school' => RequireSchoolAccess::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

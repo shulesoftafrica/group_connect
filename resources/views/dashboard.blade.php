@@ -7,22 +7,11 @@
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center">
             <h1 class="h3 mb-0">Group Overview Dashboard</h1>
-            <!-- <div>
-                <button type="button" class="btn btn-outline-primary me-2">
+            <div>
+                <!-- <button type="button" class="btn btn-outline-primary me-2">
                     <i class="bi bi-download me-1"></i>Export
-                </button>
-                <div class="btn-group">
-                    <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown">
-                        <i class="bi bi-calendar me-1"></i>This Month
-                    </button>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="#">This Week</a></li>
-                        <li><a class="dropdown-item" href="#">This Month</a></li>
-                        <li><a class="dropdown-item" href="#">This Quarter</a></li>
-                        <li><a class="dropdown-item" href="#">This Year</a></li>
-                    </ul>
-                </div>
-            </div> -->
+                </button> -->
+            </div>
         </div>
     </div>
 </div>

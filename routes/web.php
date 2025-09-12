@@ -24,17 +24,38 @@ Route::get('/user-guide', function () {
     return view('user-guide.index');
 })->name('user-guide');
 
-// Onboarding Routes (Multi-page system)
-Route::get('/onboarding', [SettingsController::class, 'onboardingStart'])->name('onboarding.start');
-Route::get('/onboarding/step1', [SettingsController::class, 'onboardingStep1'])->name('onboarding.step1');
-Route::post('/onboarding/step1', [SettingsController::class, 'saveStep1'])->name('onboarding.save-step1');
-Route::get('/onboarding/step2', [SettingsController::class, 'onboardingStep2'])->name('onboarding.step2');
-Route::post('/onboarding/step2', [SettingsController::class, 'saveStep2'])->name('onboarding.save-step2');
-Route::get('/onboarding/step3', [SettingsController::class, 'onboardingStep3'])->name('onboarding.step3');
-Route::post('/onboarding/step3', [SettingsController::class, 'saveStep3'])->name('onboarding.save-step3');
-Route::get('/onboarding/step4', [SettingsController::class, 'onboardingStep4'])->name('onboarding.step4');
-Route::post('/onboarding/step4', [SettingsController::class, 'completeOnboarding'])->name('onboarding.complete');
-Route::get('/onboarding/success', [SettingsController::class, 'onboardingSuccess'])->name('onboarding.success');
+// Onboarding Routes (Multi-page system) - Authenticated but no school requirement
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/onboarding', [SettingsController::class, 'onboardingStart'])->name('onboarding.start');
+    Route::get('/onboarding/step1', [SettingsController::class, 'onboardingStep1'])->name('onboarding.step1');
+    Route::post('/onboarding/step1', [SettingsController::class, 'saveStep1'])->name('onboarding.save-step1');
+    Route::get('/onboarding/step2', [SettingsController::class, 'onboardingStep2'])->name('onboarding.step2');
+    Route::post('/onboarding/step2', [SettingsController::class, 'saveStep2'])->name('onboarding.save-step2');
+    Route::get('/onboarding/step3', [SettingsController::class, 'onboardingStep3'])->name('onboarding.step3');
+    Route::post('/onboarding/step3', [SettingsController::class, 'saveStep3'])->name('onboarding.save-step3');
+    Route::get('/onboarding/step4', [SettingsController::class, 'onboardingStep4'])->name('onboarding.step4');
+    Route::post('/onboarding/step4', [SettingsController::class, 'completeOnboarding'])->name('onboarding.complete');
+    Route::get('/onboarding/success', [SettingsController::class, 'onboardingSuccess'])->name('onboarding.success');
+
+    // Legacy onboarding route (keep for now)
+    Route::post('/onboarding/submit', [SettingsController::class, 'submitOnboarding'])->name('onboarding.submit');
+    Route::post('/settings/validate-login-code', [SettingsController::class, 'validateLoginCode'])->name('settings.validate-login-code');
+});
+
+// Test route for onboarding data processing (debug only)
+Route::get('/test-onboarding-data', function () {
+    if (!app()->environment('local')) {
+        abort(404);
+    }
+    
+    $sessionData = session('onboarding_data', []);
+    return response()->json([
+        'session_data' => $sessionData,
+        'has_mixed_schools' => isset($sessionData['mixed_schools']),
+        'mixed_schools_count' => count($sessionData['mixed_schools'] ?? []),
+        'mixed_schools' => $sessionData['mixed_schools'] ?? []
+    ], 200, [], JSON_PRETTY_PRINT);
+})->name('test.onboarding.data');
 
 // Demo Request Routes
 Route::post('/demo/request', [SettingsController::class, 'storeDemoRequest'])->name('demo.request');
@@ -48,10 +69,7 @@ Route::get('/terms-of-service', [LegalController::class, 'termsOfService'])->nam
 Route::get('/ai-policy-security', [LegalController::class, 'aiPolicyAndSecurity'])->name('legal.ai-policy-security');
 Route::get('/data-processing-agreement', [LegalController::class, 'dataProcessingAgreement'])->name('legal.data-processing-agreement');
 
-// Legacy onboarding route (keep for now)
-Route::post('/onboarding/submit', [SettingsController::class, 'submitOnboarding'])->name('onboarding.submit');
-Route::post('/settings/validate-login-code', [SettingsController::class, 'validateLoginCode'])->name('settings.validate-login-code');
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'verified', 'require.school'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     
     // Schools Management
@@ -143,6 +161,21 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // Test new user experience
+    Route::get('/test-new-user', function () {
+        return view('dashboard', [
+            'totalStudents' => 1543,
+            'avgAttendance' => 85.6,
+            'feesCollected' => 2450000,
+            'feestobeCollected' => 3000000,
+            'collection_rate' => 81.7,
+            'recentActivities' => collect([
+                (object)['activity' => 'New student registered', 'school' => 'Demo School', 'time' => '5 minutes ago'],
+                (object)['activity' => 'Fee payment received', 'school' => 'Test Academy', 'time' => '15 minutes ago'],
+            ])
+        ]);
+    })->name('test-new-user');
 });
 
 require __DIR__.'/auth.php';

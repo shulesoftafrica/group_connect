@@ -1099,14 +1099,35 @@ class SettingsController extends Controller
 
             case 'some':
                 // Mixed environment
-                if (!empty($validated['mixed_shulesoft_schools'])) {
-                    foreach ($validated['mixed_shulesoft_schools'] as $school) {
-                        if (!empty($school['login_code'])) {
+                \Log::info('Processing mixed school environment', [
+                    'organization_id' => $organizationId,
+                    'mixed_schools_count' => count($validated['mixed_schools'] ?? []),
+                    'mixed_schools_data' => $validated['mixed_schools'] ?? []
+                ]);
+                
+                if (!empty($validated['mixed_schools'])) {
+                    foreach ($validated['mixed_schools'] as $index => $school) {
+                        if ($school['type'] === 'existing' && !empty($school['login_code'])) {
+                            \Log::info("Linking existing school via login code", [
+                                'school_index' => $index,
+                                'login_code' => $school['login_code'],
+                                'organization_id' => $organizationId
+                            ]);
                             $this->linkExistingSchool($school['login_code'], $organizationId, $userId);
-                        } else {
+                        } elseif ($school['type'] === 'new') {
+                            \Log::info("Creating new school request", [
+                                'school_index' => $index,
+                                'school_name' => $school['school_name'] ?? 'Unknown',
+                                'organization_id' => $organizationId
+                            ]);
                             $this->createSchoolRequest($school, $organizationId, $userId);
                         }
                     }
+                } else {
+                    \Log::warning('Mixed schools array is empty', [
+                        'organization_id' => $organizationId,
+                        'validated_keys' => array_keys($validated)
+                    ]);
                 }
                 break;
 
@@ -1159,18 +1180,89 @@ class SettingsController extends Controller
      */
     private function createSchoolRequest($schoolData, $organizationId, $userId)
     {
-        DB::insert("
-            INSERT INTO shulesoft.school_creation_requests 
-            (school_name, location, contact_person, contact_email, contact_phone, connect_user_id, status, requested_at, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, 'pending', NOW(), NOW())
-        ", [
-            $schoolData['school_name'] ?? '',
-            $schoolData['location'] ?? '',
-            $schoolData['contact_person'] ?? '',
-            $schoolData['contact_email'] ?? '',
-            $schoolData['contact_phone'] ?? '',
-            $userId
-        ]);
+        try {
+            \Log::info('Creating school request', [
+                'school_name' => $schoolData['school_name'] ?? 'Unknown',
+                'organization_id' => $organizationId,
+                'user_id' => $userId,
+                'school_data' => $schoolData
+            ]);
+
+            // Get organization details for email
+            $organization = DB::selectOne("SELECT name FROM shulesoft.connect_organizations WHERE id = ?", [$organizationId]);
+            $organizationName = $organization ? $organization->name : 'Unknown Organization';
+
+            $result = DB::insert("
+                INSERT INTO shulesoft.school_creation_requests 
+                (school_name, location, contact_person, contact_email, contact_phone, connect_user_id, status, requested_at, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, 'pending', NOW(), NOW())
+            ", [
+                $schoolData['school_name'] ?? '',
+                $schoolData['location'] ?? '',
+                $schoolData['contact_person'] ?? '',
+                $schoolData['contact_email'] ?? '',
+                $schoolData['contact_phone'] ?? '',
+                $userId
+            ]);
+
+            if ($result) {
+                \Log::info('School request created successfully, sending notification email', [
+                    'school_name' => $schoolData['school_name'] ?? 'Unknown',
+                    'organization_id' => $organizationId,
+                    'contact_email' => $schoolData['contact_email'] ?? ''
+                ]);
+
+                // Send notification email to the school contact
+                try {
+                    if (!empty($schoolData['contact_email'])) {
+                        $emailData = [
+                            'school_name' => $schoolData['school_name'] ?? '',
+                            'location' => $schoolData['location'] ?? '',
+                            'contact_person' => $schoolData['contact_person'] ?? '',
+                            'contact_email' => $schoolData['contact_email'] ?? '',
+                            'contact_phone' => $schoolData['contact_phone'] ?? '',
+                            'organization_name' => $organizationName,
+                            'request_id' => 'REQ-' . date('Ymd') . '-' . $organizationId . '-' . time()
+                        ];
+
+                        \Illuminate\Support\Facades\Mail::send('emails.school-registration-request', $emailData, function ($message) use ($schoolData) {
+                            $message->to($schoolData['contact_email'], $schoolData['contact_person'] ?? 'School Administrator')
+                                ->subject('School Registration Request - ShuleSoft Group Connect');
+                        });
+
+                        \Log::info('School registration notification email sent successfully', [
+                            'school_name' => $schoolData['school_name'] ?? 'Unknown',
+                            'contact_email' => $schoolData['contact_email'],
+                            'organization_name' => $organizationName
+                        ]);
+                    } else {
+                        \Log::warning('No contact email provided for school request - skipping notification', [
+                            'school_name' => $schoolData['school_name'] ?? 'Unknown'
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    \Log::error('Failed to send school registration notification email', [
+                        'error' => $e->getMessage(),
+                        'school_name' => $schoolData['school_name'] ?? 'Unknown',
+                        'contact_email' => $schoolData['contact_email'] ?? '',
+                        'file' => $e->getFile(),
+                        'line' => $e->getLine()
+                    ]);
+                    // Don't throw - email failure shouldn't break the registration process
+                }
+            }
+
+            return $result;
+        } catch (\Exception $e) {
+            \Log::error('Failed to create school request', [
+                'error' => $e->getMessage(),
+                'school_data' => $schoolData,
+                'organization_id' => $organizationId,
+                'user_id' => $userId
+            ]);
+            // Don't throw - let the process continue
+            return false;
+        }
     }
 
     /**
@@ -1478,6 +1570,12 @@ class SettingsController extends Controller
         $onboardingData = session('onboarding_data', []);
         $usageStatus = $onboardingData['usage_status'] ?? '';
 
+        \Log::info('Step 3 validation starting', [
+            'usage_status' => $usageStatus,
+            'session_data_keys' => array_keys($onboardingData),
+            'request_data_keys' => array_keys($request->all())
+        ]);
+
         // Dynamic validation based on usage status
         $rules = [];
         if ($usageStatus === 'all') {
@@ -1491,23 +1589,148 @@ class SettingsController extends Controller
             $rules['mixed_schools.*.location'] = 'required_if:mixed_schools.*.type,new|string|max:255';
             $rules['mixed_schools.*.contact_person'] = 'required_if:mixed_schools.*.type,new|string|max:255';
             $rules['mixed_schools.*.contact_email'] = 'required_if:mixed_schools.*.type,new|email|max:255';
-            $rules['mixed_schools.*.contact_phone'] = 'required_if:mixed_schools.*.type,new|string|max:20';
+            $rules['mixed_schools.*.contact_phone'] = 'required_if:mixed_schools.*.type,new|string|max:20|regex:/^[\+]?[0-9\-\(\)\s]+$/';
         } else { // none
             $rules['new_schools'] = 'required|array|min:1';
             $rules['new_schools.*.school_name'] = 'required|string|max:255';
             $rules['new_schools.*.location'] = 'required|string|max:255';
             $rules['new_schools.*.contact_person'] = 'required|string|max:255';
             $rules['new_schools.*.contact_email'] = 'required|email|max:255';
-            $rules['new_schools.*.contact_phone'] = 'required|string|max:20';
+            $rules['new_schools.*.contact_phone'] = 'required|string|max:20|regex:/^[\+]?[0-9\-\(\)\s]+$/';
         }
 
         $validated = $request->validate($rules);
+
+        // Enhanced validation checks
+        $validationErrors = $this->performEnhancedSchoolValidation($validated, $usageStatus);
+        if (!empty($validationErrors)) {
+            \Log::warning('Step 3 enhanced validation failed', [
+                'usage_status' => $usageStatus,
+                'errors' => $validationErrors
+            ]);
+            return back()->withErrors($validationErrors)->withInput();
+        }
+
+        // Log the validated data for debugging
+        \Log::info('Step 3 validation completed successfully', [
+            'usage_status' => $usageStatus,
+            'validated_keys' => array_keys($validated),
+            'school_count' => $this->getSchoolCount($validated, $usageStatus),
+            'school_data' => $usageStatus === 'some' ? ($validated['mixed_schools'] ?? []) : 
+                            ($usageStatus === 'all' ? ($validated['shulesoft_schools'] ?? []) : 
+                            ($validated['new_schools'] ?? []))
+        ]);
 
         // Store in session
         $onboardingData = array_merge($onboardingData, $validated);
         session(['onboarding_data' => $onboardingData]);
 
         return redirect()->route('onboarding.step4')->with('success', 'School details saved successfully!');
+    }
+
+    /**
+     * Perform enhanced validation for school data
+     */
+    private function performEnhancedSchoolValidation($validated, $usageStatus)
+    {
+        $errors = [];
+        
+        // Get school data based on usage status
+        $schools = [];
+        if ($usageStatus === 'all') {
+            $schools = $validated['shulesoft_schools'] ?? [];
+        } elseif ($usageStatus === 'some') {
+            $schools = $validated['mixed_schools'] ?? [];
+        } else {
+            $schools = $validated['new_schools'] ?? [];
+        }
+
+        // Track login codes and emails to check for duplicates
+        $loginCodes = [];
+        $emails = [];
+        $schoolNames = [];
+
+        foreach ($schools as $index => $school) {
+            // Check for duplicate login codes within the submission
+            if (isset($school['login_code']) && !empty($school['login_code'])) {
+                if (in_array($school['login_code'], $loginCodes)) {
+                    $errors[] = "Duplicate login code '{$school['login_code']}' found in your submission.";
+                } else {
+                    $loginCodes[] = $school['login_code'];
+                }
+            }
+
+            // Check for duplicate email addresses within the submission
+            if (isset($school['contact_email']) && !empty($school['contact_email'])) {
+                if (in_array(strtolower($school['contact_email']), $emails)) {
+                    $errors[] = "Duplicate email address '{$school['contact_email']}' found in your submission.";
+                } else {
+                    $emails[] = strtolower($school['contact_email']);
+                }
+            }
+
+            // Check for duplicate school names within the submission
+            if (isset($school['school_name']) && !empty($school['school_name'])) {
+                $schoolNameLower = strtolower(trim($school['school_name']));
+                if (in_array($schoolNameLower, $schoolNames)) {
+                    $errors[] = "Duplicate school name '{$school['school_name']}' found in your submission.";
+                } else {
+                    $schoolNames[] = $schoolNameLower;
+                }
+            }
+
+            // Validate phone number format for new schools
+            if (isset($school['contact_phone']) && !empty($school['contact_phone'])) {
+                if (!preg_match('/^[\+]?[0-9\-\(\)\s]+$/', $school['contact_phone'])) {
+                    $schoolIdentifier = isset($school['school_name']) ? $school['school_name'] : 'school ' . ($index + 1);
+                    $errors[] = "Invalid phone number format for '{$schoolIdentifier}'. Please use a valid phone number.";
+                }
+            }
+
+            // Additional validation for school names (no special characters except common ones)
+            if (isset($school['school_name']) && !empty($school['school_name'])) {
+                if (!preg_match('/^[a-zA-Z0-9\s\-\.\&\']+$/', $school['school_name'])) {
+                    $errors[] = "School name '{$school['school_name']}' contains invalid characters. Please use only letters, numbers, spaces, hyphens, periods, ampersands, and apostrophes.";
+                }
+            }
+        }
+
+        // Validate minimum requirements
+        if (empty($schools)) {
+            $errors[] = 'At least one school must be provided.';
+        }
+
+        // Check if we have at least one school for each usage type
+        if ($usageStatus === 'some') {
+            $hasExisting = false;
+            $hasNew = false;
+            foreach ($schools as $school) {
+                if (isset($school['type'])) {
+                    if ($school['type'] === 'existing') $hasExisting = true;
+                    if ($school['type'] === 'new') $hasNew = true;
+                }
+            }
+            
+            if (!$hasExisting && !$hasNew) {
+                $errors[] = 'For mixed usage, you must provide at least one existing or new school.';
+            }
+        }
+
+        return $errors;
+    }
+
+    /**
+     * Get count of schools based on usage status
+     */
+    private function getSchoolCount($validated, $usageStatus)
+    {
+        if ($usageStatus === 'all') {
+            return count($validated['shulesoft_schools'] ?? []);
+        } elseif ($usageStatus === 'some') {
+            return count($validated['mixed_schools'] ?? []);
+        } else {
+            return count($validated['new_schools'] ?? []);
+        }
     }
 
     /**

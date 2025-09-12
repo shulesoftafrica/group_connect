@@ -11,11 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('permissions', function (Blueprint $table) {
-            $table->id();
-            $table->string('name')->unique();
-            $table->string('description')->nullable();
-            $table->timestamps();
+        Schema::table('connect_users', function (Blueprint $table) {
+            $table->dropColumn(['tour_completed_at', 'tour_steps_completed']);
         });
     }
 
@@ -24,6 +21,9 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('permissions');
+        Schema::table('connect_users', function (Blueprint $table) {
+            $table->timestamp('tour_completed_at')->nullable();
+            $table->json('tour_steps_completed')->nullable();
+        });
     }
 };

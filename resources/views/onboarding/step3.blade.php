@@ -447,25 +447,255 @@
             $(this).closest('.school-item').remove();
         });
         
-        // Form validation
+        // Phase 2: Enhanced form validation
         $('#step3Form').on('submit', function(e) {
             let isValid = true;
+            let duplicateCheck = { codes: [], emails: [], names: [] };
             
-            // Check required fields
-            $(this).find('input[required]').each(function() {
-                if (!$(this).val().trim()) {
-                    isValid = false;
-                    $(this).addClass('is-invalid');
-                } else {
-                    $(this).removeClass('is-invalid');
-                }
-            });
+            // Reset previous error states
+            $('.form-control').removeClass('is-invalid');
+            $('.validation-error').remove();
+            
+            // Validate based on usage status
+            @if(($data['usage_status'] ?? '') == 'all')
+                // Validate ShuleSoft schools
+                $('input[name*="[login_code]"]').each(function() {
+                    let code = $(this).val().trim();
+                    
+                    // Required validation
+                    if (!code) {
+                        $(this).addClass('is-invalid');
+                        addValidationError($(this), 'Login code is required');
+                        isValid = false;
+                    } else {
+                        // Duplicate validation
+                        if (duplicateCheck.codes.includes(code.toLowerCase())) {
+                            $(this).addClass('is-invalid');
+                            addValidationError($(this), 'Duplicate login code: ' + code);
+                            isValid = false;
+                        } else {
+                            duplicateCheck.codes.push(code.toLowerCase());
+                        }
+                        
+                        // Format validation
+                        if (!/^[A-Z0-9_-]+$/i.test(code)) {
+                            $(this).addClass('is-invalid');
+                            addValidationError($(this), 'Login code can only contain letters, numbers, hyphens, and underscores');
+                            isValid = false;
+                        }
+                    }
+                });
+                
+            @elseif(($data['usage_status'] ?? '') == 'some')
+                // Validate mixed schools
+                $('.school-item').each(function(index) {
+                    let type = $(this).find('.school-type').val();
+                    let container = $(this);
+                    
+                    if (!type) {
+                        container.find('.school-type').addClass('is-invalid');
+                        addValidationError(container.find('.school-type'), 'School type is required');
+                        isValid = false;
+                    } else if (type === 'existing') {
+                        // Validate existing school
+                        let code = container.find('input[name*="[login_code]"]').val().trim();
+                        if (!code) {
+                            container.find('input[name*="[login_code]"]').addClass('is-invalid');
+                            addValidationError(container.find('input[name*="[login_code]"]'), 'Login code is required');
+                            isValid = false;
+                        } else {
+                            if (duplicateCheck.codes.includes(code.toLowerCase())) {
+                                container.find('input[name*="[login_code]"]').addClass('is-invalid');
+                                addValidationError(container.find('input[name*="[login_code]"]'), 'Duplicate login code: ' + code);
+                                isValid = false;
+                            } else {
+                                duplicateCheck.codes.push(code.toLowerCase());
+                            }
+                        }
+                    } else if (type === 'new') {
+                        // Validate new school
+                        if (!validateNewSchoolFields(container, duplicateCheck)) {
+                            isValid = false;
+                        }
+                    }
+                });
+                
+            @else
+                // Validate new schools
+                $('.school-item').each(function() {
+                    if (!validateNewSchoolFields($(this), duplicateCheck)) {
+                        isValid = false;
+                    }
+                });
+            @endif
             
             if (!isValid) {
                 e.preventDefault();
-                alert('Please complete all required fields.');
+                
+                // Show summary of errors
+                let errorSummary = '<div class="alert alert-danger mt-3" id="error-summary">';
+                errorSummary += '<h6><i class="fas fa-exclamation-triangle me-2"></i>Please fix the following errors:</h6>';
+                errorSummary += '<ul class="mb-0">';
+                
+                $('.is-invalid').each(function() {
+                    let label = $(this).closest('.form-group, .col-md-8, .col-md-6').find('label').first().text() || 'Field';
+                    let error = $(this).siblings('.invalid-feedback').text() || 'This field has an error';
+                    errorSummary += '<li>' + label + ': ' + error + '</li>';
+                });
+                
+                errorSummary += '</ul></div>';
+                
+                $('#error-summary').remove();
+                $('#step3Form').prepend(errorSummary);
+                
+                // Scroll to first error
+                $('html, body').animate({
+                    scrollTop: $('.is-invalid').first().offset().top - 100
+                }, 500);
             }
         });
+        
+        // Helper function to validate new school fields
+        function validateNewSchoolFields(container, duplicateCheck) {
+            let isValid = true;
+            
+            // School name validation
+            let name = container.find('input[name*="[school_name]"]').val().trim();
+            if (!name) {
+                container.find('input[name*="[school_name]"]').addClass('is-invalid');
+                addValidationError(container.find('input[name*="[school_name]"]'), 'School name is required');
+                isValid = false;
+            } else {
+                // Duplicate name check
+                if (duplicateCheck.names.includes(name.toLowerCase())) {
+                    container.find('input[name*="[school_name]"]').addClass('is-invalid');
+                    addValidationError(container.find('input[name*="[school_name]"]'), 'Duplicate school name: ' + name);
+                    isValid = false;
+                } else {
+                    duplicateCheck.names.push(name.toLowerCase());
+                }
+                
+                // Name format validation
+                if (!/^[a-zA-Z0-9\s\-\.\&\']+$/.test(name)) {
+                    container.find('input[name*="[school_name]"]').addClass('is-invalid');
+                    addValidationError(container.find('input[name*="[school_name]"]'), 'School name contains invalid characters');
+                    isValid = false;
+                }
+            }
+            
+            // Location validation
+            let location = container.find('input[name*="[location]"]').val().trim();
+            if (!location) {
+                container.find('input[name*="[location]"]').addClass('is-invalid');
+                addValidationError(container.find('input[name*="[location]"]'), 'Location is required');
+                isValid = false;
+            }
+            
+            // Contact person validation
+            let person = container.find('input[name*="[contact_person]"]').val().trim();
+            if (!person) {
+                container.find('input[name*="[contact_person]"]').addClass('is-invalid');
+                addValidationError(container.find('input[name*="[contact_person]"]'), 'Contact person is required');
+                isValid = false;
+            }
+            
+            // Email validation
+            let email = container.find('input[name*="[contact_email]"]').val().trim();
+            if (!email) {
+                container.find('input[name*="[contact_email]"]').addClass('is-invalid');
+                addValidationError(container.find('input[name*="[contact_email]"]'), 'Email is required');
+                isValid = false;
+            } else {
+                // Email format validation
+                let emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(email)) {
+                    container.find('input[name*="[contact_email]"]').addClass('is-invalid');
+                    addValidationError(container.find('input[name*="[contact_email]"]'), 'Invalid email format');
+                    isValid = false;
+                } else {
+                    // Duplicate email check
+                    if (duplicateCheck.emails.includes(email.toLowerCase())) {
+                        container.find('input[name*="[contact_email]"]').addClass('is-invalid');
+                        addValidationError(container.find('input[name*="[contact_email]"]'), 'Duplicate email: ' + email);
+                        isValid = false;
+                    } else {
+                        duplicateCheck.emails.push(email.toLowerCase());
+                    }
+                }
+            }
+            
+            // Phone validation
+            let phone = container.find('input[name*="[contact_phone]"]').val().trim();
+            if (!phone) {
+                container.find('input[name*="[contact_phone]"]').addClass('is-invalid');
+                addValidationError(container.find('input[name*="[contact_phone]"]'), 'Phone number is required');
+                isValid = false;
+            } else {
+                // Phone format validation
+                let phoneRegex = /^[\+]?[0-9\-\(\)\s]+$/;
+                if (!phoneRegex.test(phone)) {
+                    container.find('input[name*="[contact_phone]"]').addClass('is-invalid');
+                    addValidationError(container.find('input[name*="[contact_phone]"]'), 'Invalid phone number format');
+                    isValid = false;
+                }
+            }
+            
+            return isValid;
+        }
+        
+        // Helper function to add validation error
+        function addValidationError(element, message) {
+            element.siblings('.invalid-feedback').remove();
+            element.after('<div class="invalid-feedback">' + message + '</div>');
+        }
+        
+        // Real-time validation on input
+        $(document).on('input', '.form-control', function() {
+            if ($(this).hasClass('is-invalid')) {
+                $(this).removeClass('is-invalid');
+                $(this).siblings('.invalid-feedback').remove();
+            }
+        });
+        
+        // Real-time validation on select change
+        $(document).on('change', '.school-type', function() {
+            if ($(this).hasClass('is-invalid')) {
+                $(this).removeClass('is-invalid');
+                $(this).siblings('.invalid-feedback').remove();
+            }
+        });
+        
+        // Progress indicator
+        function updateProgress() {
+            let totalFields = $('input[required], select[required]').length;
+            let completedFields = $('input[required], select[required]').filter(function() {
+                return $(this).val().trim() !== '';
+            }).length;
+            
+            let percentage = Math.round((completedFields / totalFields) * 100);
+            
+            $('#progress-indicator').remove();
+            if (totalFields > 0) {
+                let progressHtml = '<div id="progress-indicator" class="alert alert-info mt-3">';
+                progressHtml += '<div class="d-flex justify-content-between mb-2">';
+                progressHtml += '<span><i class="fas fa-clipboard-check me-2"></i>Form Completion</span>';
+                progressHtml += '<span>' + percentage + '%</span>';
+                progressHtml += '</div>';
+                progressHtml += '<div class="progress" style="height: 8px;">';
+                progressHtml += '<div class="progress-bar" style="width: ' + percentage + '%"></div>';
+                progressHtml += '</div></div>';
+                
+                $('.step-content h3').after(progressHtml);
+            }
+        }
+        
+        // Update progress on field changes
+        $(document).on('input change', 'input, select', function() {
+            setTimeout(updateProgress, 100);
+        });
+        
+        // Initial progress update
+        updateProgress();
     });
 </script>
 @endsection
