@@ -7,14 +7,45 @@
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center">
             <h1 class="h3 mb-0">Group Overview Dashboard</h1>
-            <div>
-                <!-- <button type="button" class="btn btn-outline-primary me-2">
+            <!-- <div>
+                <button type="button" class="btn btn-outline-primary me-2">
                     <i class="bi bi-download me-1"></i>Export
-                </button> -->
-            </div>
+                </button>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown">
+                        <i class="bi bi-calendar me-1"></i>This Month
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#">This Week</a></li>
+                        <li><a class="dropdown-item" href="#">This Month</a></li>
+                        <li><a class="dropdown-item" href="#">This Quarter</a></li>
+                        <li><a class="dropdown-item" href="#">This Year</a></li>
+                    </ul>
+                </div>
+            </div> -->
         </div>
     </div>
 </div>
+
+<!-- School Association Notification -->
+@if(isset($hasNoSchoolsAssociated) && $hasNoSchoolsAssociated)
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="alert alert-warning alert-dismissible fade show d-flex align-items-center" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-3 fs-4"></i>
+            <div class="flex-grow-1">
+                <h6 class="alert-heading mb-1">No Schools Associated</h6>
+                <p class="mb-2">You don't have any schools associated with your account yet. To view data and analytics, you need to connect to at least one school.</p>
+                <a href="#" class="btn btn-sm btn-outline-warning">
+                    <i class="bi bi-plus-circle me-1"></i>Add School
+                </a>
+                <a href="#" class="btn btn-sm btn-link text-warning p-0 ms-2">Learn more</a>
+            </div>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
+@endif
 
 <!-- KPI Cards -->
 <div class="row mb-4">
@@ -36,13 +67,13 @@
             </div>
         </div>
     </div>
-    
+
     <div class="col-xl-3 col-md-6 mb-4">
         <div class="card stats-card border-0 h-100">
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <h6 class="text-muted text-uppercase fw-bold mb-1">Average Attendance</h6>
+                        <h6 class="text-muted text-uppercase fw-bold mb-1">Average Attendance</h6>     
                         <h2 class="mb-0">{{ number_format($avgAttendance ?? 87.5, 1) }}%</h2>
                         <small class="text-success">
                             <i class="bi bi-arrow-up"></i> 2.1% vs last month
@@ -55,7 +86,7 @@
             </div>
         </div>
     </div>
-    
+
     <div class="col-xl-3 col-md-6 mb-4">
         <div class="card stats-card border-0 h-100">
             <div class="card-body">
@@ -74,7 +105,7 @@
             </div>
         </div>
     </div>
-    
+
     <div class="col-xl-3 col-md-6 mb-4">
         <div class="card stats-card border-0 h-100">
             <div class="card-body">
@@ -83,7 +114,7 @@
                         <h6 class="text-muted text-uppercase fw-bold mb-1">Active Schools</h6>
                         <h2 class="mb-0">{{ $activeSchools ?? 24 }}</h2>
                         <small class="text-info">
-                            <i class="bi bi-info-circle"></i> {{ $totalSchools ?? 25 }} total schools
+                            <i class="bi bi-info-circle"></i> {{ $totalSchools ?? 25 }} total schools  
                         </small>
                     </div>
                     <div class="bg-info bg-opacity-10 rounded-3 p-3">
@@ -108,7 +139,7 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Top Performing Schools -->
     <div class="col-xl-4 mb-4">
         <div class="card stats-card border-0 h-100">
@@ -190,7 +221,7 @@
         </div>
     </div>
 </div>
-    
+
     <!-- Alerts and Quick Actions -->
     <div class="col-xl-4 mb-4">
         <div class="card stats-card border-0 h-100">
@@ -206,13 +237,13 @@
                         <strong  style="color: black !important;" >{{count($examResults)}} schools</strong>  published exam results
                     </div>
 
-                    
+
                     <div style="color: black !important;" class="alert alert-info alert-sm" role="alert" style="cursor:pointer;" data-bs-toggle="modal" data-bs-target="#budgetApprovalsModal" id="pendingBudgetAlert">
                         <i style="color: black !important;"  class="bi bi-info-circle me-2"></i>
                         <strong  style="color: black !important;" >{{count($pendingBudgets)}} budget approvals</strong> pending review
                     </div>
 
-                  
+
                     @php
                         $rate = $collection_rate ?? 0;
                         if ($rate > 80) {
@@ -238,7 +269,7 @@
                         {{ $message }} ({{ number_format($rate, 1) }}%)
                     </div>
                 </div>
-                
+
                 <!-- Quick Actions -->
                 <!-- <div>
                     <h6 class="text-muted">Quick Actions</h6>

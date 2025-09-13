@@ -59,11 +59,26 @@ class SettingsController extends Controller
 
         $schoolUids = $request->schools ?? $this->getAllSchoolUids();
 
-        foreach ($schoolUids as $uid) {
-            DB::insert("
-                INSERT INTO shulesoft.academic_year (uid, year_name, start_date, end_date, status, created_at)
-                VALUES (?, ?, ?, ?, 'active', NOW())
-            ", [$uid, $request->year_name, $request->start_date, $request->end_date]);
+        // Phase 1 Optimization: Replace individual INSERTs with bulk INSERT
+        if (!empty($schoolUids)) {
+            $insertData = [];
+            $now = now();
+            
+            foreach ($schoolUids as $uid) {
+                $insertData[] = [
+                    'uid' => $uid,
+                    'year_name' => $request->year_name,
+                    'start_date' => $request->start_date,
+                    'end_date' => $request->end_date,
+                    'status' => 'active',
+                    'created_at' => $now
+                ];
+            }
+            
+            // Single bulk insert instead of individual queries
+            if (!empty($insertData)) {
+                \DB::table('shulesoft.academic_year')->insert($insertData);
+            }
         }
 
         return redirect()->back()->with('success', 'Academic year created successfully for selected schools.');
@@ -128,28 +143,40 @@ class SettingsController extends Controller
             implode(',', $request->assigned_schools ?? []),
             Auth::user()->connect_organization_id
         ]);
+        
+        // Phase 1 Optimization: Replace individual INSERTs with bulk INSERT
         if (!empty($request->assigned_schools)) {
+            $insertData = [];
+            $now = now();
+            $organizationId = Auth::user()->connect_organization_id;
+            $userId = Auth::user()->id;
+            
             foreach ($request->assigned_schools as $school_setting_uid) {
-            DB::statement("
-                INSERT INTO shulesoft.connect_schools (
-                school_setting_uid,
-                connect_organization_id,
-                connect_user_id,
-                is_active,
-                shulesoft_code,
-                settings,
-                created_by,
-                created_at
-                ) VALUES (?, ?, ?, true, ?, ?, ?, NOW())
-                ON CONFLICT (school_setting_uid, connect_organization_id, connect_user_id) DO NOTHING
-            ", [
-                $school_setting_uid, // school_setting_uid, set as needed
-                Auth::user()->connect_organization_id,
-                Auth::user()->id,
-                null, // shulesoft_code, set as needed
-                json_encode([]), // settings, default empty
-                Auth::user()->id
-            ]);
+                $insertData[] = [
+                    'school_setting_uid' => $school_setting_uid,
+                    'connect_organization_id' => $organizationId,
+                    'connect_user_id' => $userId,
+                    'is_active' => true,
+                    'shulesoft_code' => null,
+                    'settings' => json_encode([]),
+                    'created_by' => $userId,
+                    'created_at' => $now
+                ];
+            }
+            
+            // Single bulk upsert instead of individual queries
+            if (!empty($insertData)) {
+                foreach ($insertData as $data) {
+                    \DB::table('shulesoft.connect_schools')
+                        ->updateOrInsert(
+                            [
+                                'school_setting_uid' => $data['school_setting_uid'],
+                                'connect_organization_id' => $data['connect_organization_id'],
+                                'connect_user_id' => $data['connect_user_id']
+                            ],
+                            $data
+                        );
+                }
             }
         }
 

@@ -870,69 +870,72 @@ class FinanceController extends Controller
             $startDate = Carbon::now()->startOfYear();
             $endDate = Carbon::now();
 
-            $schoolComparison = [];
+            // Phase 1 Optimization: Replace N+1 queries with single optimized query
+            $schoolIds = $schools->pluck('id')->toArray();
             
-            // Get financial data for each school
-            foreach ($schools as $school) {
-                // Get schema name for this school
-                $schemaName = \DB::table('shulesoft.setting')
-                    ->where('uid', $school->school_setting_uid)
-                    ->value('schema_name');
+            if (empty($schoolIds)) {
+                return [];
+            }
+            
+            $placeholders = str_repeat('?,', count($schoolIds) - 1) . '?';
+            
+            $results = \DB::select("
+                SELECT 
+                    cs.name as school_name,
+                    ss.schema_name,
+                    COALESCE(ss.sname, cs.name, 'Unknown School') as settings_school_name,
+                    COALESCE(payments.revenue, 0) as revenue,
+                    COALESCE(expenses.total_expenses, 0) as expenses,
+                    COALESCE(students.student_count, 0) as student_count,
+                    CASE 
+                        WHEN COALESCE(payments.revenue, 0) > 0 
+                        THEN ROUND((COALESCE(payments.revenue, 0) - COALESCE(expenses.total_expenses, 0)) / COALESCE(payments.revenue, 0) * 100, 2)
+                        ELSE 0 
+                    END as profit_margin,
+                    CASE 
+                        WHEN COALESCE(students.student_count, 0) > 0 
+                        THEN ROUND(COALESCE(payments.revenue, 0) / COALESCE(students.student_count, 0), 2)
+                        ELSE 0 
+                    END as revenue_per_student,
+                    (COALESCE(payments.revenue, 0) - COALESCE(expenses.total_expenses, 0)) as profit
+                FROM connect_schools cs
+                JOIN shulesoft.setting ss ON cs.school_setting_uid = ss.uid
+                LEFT JOIN (
+                    SELECT schema_name, SUM(amount) as revenue 
+                    FROM shulesoft.payments 
+                    WHERE created_at BETWEEN ? AND ? AND EXTRACT(YEAR FROM created_at) = ?
+                    GROUP BY schema_name
+                ) payments ON ss.schema_name = payments.schema_name
+                LEFT JOIN (
+                    SELECT schema_name, SUM(amount) as total_expenses 
+                    FROM shulesoft.expenses 
+                    WHERE created_at BETWEEN ? AND ? AND EXTRACT(YEAR FROM created_at) = ?
+                    GROUP BY schema_name
+                ) expenses ON ss.schema_name = expenses.schema_name
+                LEFT JOIN (
+                    SELECT schema_name, COUNT(*) as student_count 
+                    FROM shulesoft.student 
+                    WHERE status = 1
+                    GROUP BY schema_name
+                ) students ON ss.schema_name = students.schema_name
+                WHERE cs.id IN ({$placeholders})
+                ORDER BY revenue DESC
+                LIMIT 10
+            ", array_merge([$startDate, $endDate, $currentYear, $startDate, $endDate, $currentYear], $schoolIds));
 
-                if (!$schemaName) {
-                    continue; // Skip if no schema name found
-                }
-
-                // Get revenue from payments table for this school
-                $revenue = \DB::table('shulesoft.payments')
-                    ->where('schema_name', $schemaName)
-                    ->whereBetween('created_at', [$startDate, $endDate])
-                    ->whereYear('created_at', $currentYear)
-                    ->sum('amount') ?? 0;
-
-                // Get expenses from expenses table for this school
-                $expenses = \DB::table('shulesoft.expenses')
-                    ->where('schema_name', $schemaName)
-                    ->whereBetween('created_at', [$startDate, $endDate])
-                    ->whereYear('created_at', $currentYear)
-                    ->sum('amount') ?? 0;
-
-                // Get school name from settings or use default
-                $schoolName = \DB::table('shulesoft.setting')
-                    ->where('schema_name', $schemaName)
-                    ->value('sname') ?? ($school->settings['school_name'] ?? 'Unknown School');
-
-                // Get additional financial metrics
-                $studentCount = \DB::table('shulesoft.student')
-                    ->where('schema_name', $schemaName)
-                    ->where('status', 1)
-                    ->count();
-
-                $revenuePerStudent = $studentCount > 0 ? $revenue / $studentCount : 0;
-                
-                // Calculate profit
-                $profit = $revenue - $expenses;
-                $profitMargin = $revenue > 0 ? round(($profit / $revenue) * 100, 2) : 0;
-
-                $schoolComparison[] = [
-                    'school' => $schoolName,
-                    'schema_name' => $schemaName,
-                    'revenue' => (float) $revenue,
-                    'expense' => (float) $expenses,
-                    'profit' => (float) $profit,
-                    'profit_margin' => $profitMargin,
-                    'revenue_per_student' => round($revenuePerStudent, 2),
-                    'student_count' => (int) $studentCount,
+            $schoolComparison = collect($results)->map(function ($result) use ($currentYear) {
+                return [
+                    'school' => $result->settings_school_name,
+                    'schema_name' => $result->schema_name,
+                    'revenue' => (float) $result->revenue,
+                    'expense' => (float) $result->expenses,
+                    'profit' => (float) $result->profit,
+                    'profit_margin' => (float) $result->profit_margin,
+                    'revenue_per_student' => (float) $result->revenue_per_student,
+                    'student_count' => (int) $result->student_count,
                     'year' => $currentYear
                 ];
-            }
-
-            // Sort by revenue descending and take top 10
-            $schoolComparison = collect($schoolComparison)
-                ->sortByDesc('revenue')
-                ->take(10)
-                ->values()
-                ->toArray();
+            })->toArray();
             
             return $schoolComparison;
 
