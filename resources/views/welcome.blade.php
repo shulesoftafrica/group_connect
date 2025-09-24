@@ -45,6 +45,13 @@
                                 Register
                             </a>
                         @endif
+
+                        <a
+                            href="{{ route('register') }}"
+                            class="inline-block px-5 py-1.5 bg-[#F53003] text-white border border-[#F53003] hover:bg-[#d42a00] hover:border-[#d42a00] rounded-sm text-sm leading-normal font-semibold transition-all"
+                        >
+                            Start Free Trial
+                        </a>
                     @endauth
                 </nav>
             @endif

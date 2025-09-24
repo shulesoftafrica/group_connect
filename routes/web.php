@@ -25,7 +25,7 @@ Route::get('/user-guide', function () {
 })->name('user-guide');
 
 // Onboarding Routes (Multi-page system) - Authenticated but no school requirement
-Route::middleware(['auth', 'verified'])->group(function () {
+//Route::middleware(['verified'])->group(function () {
     Route::get('/onboarding', [SettingsController::class, 'onboardingStart'])->name('onboarding.start');
     Route::get('/onboarding/step1', [SettingsController::class, 'onboardingStep1'])->name('onboarding.step1');
     Route::post('/onboarding/step1', [SettingsController::class, 'saveStep1'])->name('onboarding.save-step1');
@@ -40,7 +40,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Legacy onboarding route (keep for now)
     Route::post('/onboarding/submit', [SettingsController::class, 'submitOnboarding'])->name('onboarding.submit');
     Route::post('/settings/validate-login-code', [SettingsController::class, 'validateLoginCode'])->name('settings.validate-login-code');
-});
+//});
 
 // Test route for onboarding data processing (debug only)
 Route::get('/test-onboarding-data', function () {
