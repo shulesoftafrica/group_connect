@@ -24,8 +24,9 @@ Route::get('/user-guide', function () {
     return view('user-guide.index');
 })->name('user-guide');
 
-// Onboarding Routes (Multi-page system) - Authenticated but no school requirement
+// Onboarding Routes (Multi-page system) - Mixed auth requirements
 Route::group([], function () {
+    // Routes for new user registration (no auth required)
     Route::get('/onboarding', [SettingsController::class, 'onboardingStart'])->name('onboarding.start');
     Route::get('/onboarding/step1', [SettingsController::class, 'onboardingStep1'])->name('onboarding.step1');
     Route::post('/onboarding/step1', [SettingsController::class, 'saveStep1'])->name('onboarding.save-step1');
@@ -40,6 +41,11 @@ Route::group([], function () {
     // Legacy onboarding route (keep for now)
     Route::post('/onboarding/submit', [SettingsController::class, 'submitOnboarding'])->name('onboarding.submit');
     Route::post('/settings/validate-login-code', [SettingsController::class, 'validateLoginCode'])->name('settings.validate-login-code');
+    
+    // AJAX validation routes for onboarding
+    Route::post('/onboarding/validate-email', [SettingsController::class, 'validateEmail'])->name('onboarding.validate-email');
+    Route::post('/onboarding/validate-phone', [SettingsController::class, 'validatePhone'])->name('onboarding.validate-phone');
+    Route::post('/onboarding/validate-organization', [SettingsController::class, 'validateOrganization'])->name('onboarding.validate-organization');
 });
 
 // Test route for onboarding data processing (debug only)

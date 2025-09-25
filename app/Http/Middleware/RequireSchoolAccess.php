@@ -40,6 +40,9 @@ class RequireSchoolAccess
             'onboarding.success',
             'onboarding.submit',
             'settings.validate-login-code',
+            'schools.index',  // Allow access to school management for users without schools
+            'schools.create', // Allow access to add schools
+            'schools.store',  // Allow storing new schools
             'logout'
         ];
         

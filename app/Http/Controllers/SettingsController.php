@@ -424,6 +424,129 @@ class SettingsController extends Controller
             ]);
         }
     }
+
+    /**
+     * AJAX validation for email uniqueness during onboarding
+     */
+    public function validateEmail(Request $request)
+    {
+        $email = $request->input('email');
+        
+        if (!$email) {
+            return response()->json([
+                'valid' => false,
+                'message' => 'Email is required'
+            ]);
+        }
+
+        // Validate email format
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return response()->json([
+                'valid' => false,
+                'message' => 'Please enter a valid email address'
+            ]);
+        }
+
+        // Check if email already exists
+        $existingUser = DB::selectOne(
+            "SELECT id, name FROM shulesoft.connect_users WHERE email = ?", 
+            [$email]
+        );
+
+        if ($existingUser) {
+            return response()->json([
+                'valid' => false,
+                'message' => 'This email address is already registered. Please use a different email or contact support if this is your account.'
+            ]);
+        }
+
+        return response()->json([
+            'valid' => true,
+            'message' => 'Email is available'
+        ]);
+    }
+
+    /**
+     * AJAX validation for phone uniqueness during onboarding
+     */
+    public function validatePhone(Request $request)
+    {
+        $phone = $request->input('phone');
+        
+        if (!$phone) {
+            return response()->json([
+                'valid' => false,
+                'message' => 'Phone number is required'
+            ]);
+        }
+
+        // Validate phone format
+        if (!preg_match('/^[\+]?[0-9\s\-\(\)]{10,}$/', $phone)) {
+            return response()->json([
+                'valid' => false,
+                'message' => 'Please enter a valid phone number'
+            ]);
+        }
+
+        // Check if phone already exists
+        $existingUser = DB::selectOne(
+            "SELECT id, name FROM shulesoft.connect_users WHERE phone = ?", 
+            [$phone]
+        );
+
+        if ($existingUser) {
+            return response()->json([
+                'valid' => false,
+                'message' => 'This phone number is already registered. Please use a different phone number or contact support if this is your account.'
+            ]);
+        }
+
+        return response()->json([
+            'valid' => true,
+            'message' => 'Phone number is available'
+        ]);
+    }
+
+    /**
+     * AJAX validation for organization name uniqueness during onboarding
+     */
+    public function validateOrganization(Request $request)
+    {
+        $orgName = $request->input('org_name');
+        
+        if (!$orgName) {
+            return response()->json([
+                'valid' => false,
+                'message' => 'Organization name is required'
+            ]);
+        }
+
+        // Validate organization name format
+        if (!preg_match('/^[a-zA-Z0-9\s.&\'-]+$/', $orgName)) {
+            return response()->json([
+                'valid' => false,
+                'message' => 'Organization name can only contain letters, numbers, spaces, dots, ampersands, hyphens, and apostrophes'
+            ]);
+        }
+
+        // Check if organization name already exists (case-insensitive)
+        $existingOrg = DB::selectOne(
+            "SELECT id, name FROM shulesoft.connect_organizations WHERE LOWER(name) = LOWER(?)", 
+            [$orgName]
+        );
+
+        if ($existingOrg) {
+            return response()->json([
+                'valid' => false,
+                'message' => 'An organization with this name already exists. Please choose a different name.'
+            ]);
+        }
+
+        return response()->json([
+            'valid' => true,
+            'message' => 'Organization name is available'
+        ]);
+    }
     public function storeSchool(Request $request)
     {
         if ($request->action_type === 'link_existing') {
@@ -1517,6 +1640,64 @@ class SettingsController extends Controller
      */
     public function onboardingStart()
     {
+        $user = auth()->user();
+        
+        // If user is not authenticated, redirect to step1 for new user registration
+        if (!$user) {
+            \Log::info('Unauthenticated user accessing onboarding - redirecting to step1 for registration');
+            return redirect()->route('onboarding.step1');
+        }
+        
+        // Check if user already has schools (shouldn't need onboarding)
+        $schoolCount = $user->schools()->count();
+        if ($schoolCount > 0) {
+            \Log::info('User already has schools, redirecting to dashboard', [
+                'user_id' => $user->id,
+                'schools_count' => $schoolCount
+            ]);
+            
+            // Clear any old session data and redirect to dashboard
+            session()->forget('onboarding_data');
+            return redirect()->route('dashboard');
+        }
+        
+        // Check if user has an organization (meaning they completed initial registration)
+        $hasOrganization = $user->connect_organization_id !== null;
+        
+        if ($hasOrganization) {
+            // User completed registration but has no schools - check for pending requests
+            $pendingRequests = DB::selectOne(
+                "SELECT COUNT(*) as count FROM shulesoft.school_creation_requests WHERE connect_user_id = ?", 
+                [$user->id]
+            )->count ?? 0;
+            
+            \Log::info('Existing user needs school setup', [
+                'user_id' => $user->id,
+                'has_organization' => $hasOrganization,
+                'pending_requests' => $pendingRequests
+            ]);
+            
+            // Clear session data and redirect to school management
+            session()->forget('onboarding_data');
+            
+            if ($pendingRequests > 0) {
+                return redirect()->route('schools.index')
+                    ->with('info', 'Your school setup requests are being processed. You can add more schools or check the status here.');
+            } else {
+                return redirect()->route('schools.index')
+                    ->with('warning', 'Please add your schools to continue using the platform.');
+            }
+        }
+        
+        // Clear any stale session data from previous incomplete attempts
+        session()->forget('onboarding_data');
+        
+        \Log::info('Starting fresh onboarding process for new user', [
+            'user_id' => $user->id,
+            'user_email' => $user->email,
+            'has_organization' => $hasOrganization
+        ]);
+        
         return redirect()->route('onboarding.step1');
     }
 
@@ -1532,20 +1713,63 @@ class SettingsController extends Controller
 
     public function saveStep1(Request $request)
     {
-        $validated = $request->validate([
-            'org_name' => 'required|string|max:255|regex:/^[a-zA-Z0-9\s.&\'-]+$/',
-            'org_email' => 'required|email|max:255',
-            'contact_name' => 'required|string|max:255|regex:/^[a-zA-Z\s.\'-]+$/',
-            'contact_email' => 'required|email|max:255',
-            'contact_phone' => 'required|string|regex:/^[\+]?[0-9\s\-\(\)]{10,}$/',
-        ]);
+        try {
+            $validated = $request->validate([
+                'org_name' => 'required|string|max:255|regex:/^[a-zA-Z0-9\s.&\'-]+$/',
+                'org_email' => 'required|email|max:255',
+                'contact_name' => 'required|string|max:255|regex:/^[a-zA-Z\s.\'-]+$/',
+                'contact_email' => 'required|email|max:255',
+                'contact_phone' => 'required|string|regex:/^[\+]?[0-9\s\-\(\)]{10,}$/',
+            ], [
+                'org_name.regex' => 'Organization name can only contain letters, numbers, spaces, dots, ampersands, hyphens, and apostrophes',
+                'contact_name.regex' => 'Contact name can only contain letters, spaces, dots, hyphens, and apostrophes',
+                'contact_phone.regex' => 'Please enter a valid phone number',
+            ]);
 
-        // Store in session
-        $onboardingData = session('onboarding_data', []);
-        $onboardingData = array_merge($onboardingData, $validated);
-        session(['onboarding_data' => $onboardingData]);
+            // Additional server-side validation for uniqueness (backup to AJAX validation)
+            $errors = [];
+            
+            // Check for duplicate email
+            $existingUser = DB::selectOne(
+                "SELECT id, name FROM shulesoft.connect_users WHERE email = ?", 
+                [$validated['contact_email']]
+            );
+            if ($existingUser) {
+                $errors['contact_email'] = 'This email address is already registered. Please use a different email or contact support if this is your account.';
+            }
 
-        return redirect()->route('onboarding.step2')->with('success', 'Organization information saved successfully!');
+            // Check for duplicate phone
+            $existingPhone = DB::selectOne(
+                "SELECT id, name FROM shulesoft.connect_users WHERE phone = ?", 
+                [$validated['contact_phone']]
+            );
+            if ($existingPhone) {
+                $errors['contact_phone'] = 'This phone number is already registered. Please use a different phone number or contact support if this is your account.';
+            }
+
+            // Check for duplicate organization name
+            $existingOrg = DB::selectOne(
+                "SELECT id, name FROM shulesoft.connect_organizations WHERE LOWER(name) = LOWER(?)", 
+                [$validated['org_name']]
+            );
+            if ($existingOrg) {
+                $errors['org_name'] = 'An organization with this name already exists. Please choose a different name.';
+            }
+
+            if (!empty($errors)) {
+                return back()->withInput()->withErrors($errors);
+            }
+
+            // Store in session
+            $onboardingData = session('onboarding_data', []);
+            $onboardingData = array_merge($onboardingData, $validated);
+            session(['onboarding_data' => $onboardingData]);
+
+            return redirect()->route('onboarding.step2')->with('success', 'Organization information saved successfully!');
+        
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return back()->withInput()->withErrors($e->errors());
+        }
     }
 
     /**
@@ -1806,12 +2030,14 @@ class SettingsController extends Controller
                         'blocking_registration' => true
                     ]);
                     
-                    // Clear session data since registration failed
-                    session()->forget('onboarding_data');
+                    // Don't clear session data - preserve user's work!
+                    // session()->forget('onboarding_data');
                     
-                    return redirect()->route('onboarding.step1')->with('error', 
-                        "The email address '{$emailToCheck}' is already registered with another account. Please use a different email address or contact support if this is your account."
-                    );
+                    return redirect()->route('onboarding.step1')
+                        ->withInput()
+                        ->with('error', 
+                            "The email address '{$emailToCheck}' is already registered with another account. Please use a different email address or contact support if this is your account."
+                        )->with('highlight_field', 'contact_email');
                 }
             }
 
@@ -1828,12 +2054,14 @@ class SettingsController extends Controller
                         'blocking_registration' => true
                     ]);
                     
-                    // Clear session data since registration failed
-                    session()->forget('onboarding_data');
+                    // Don't clear session data - preserve user's work!
+                    // session()->forget('onboarding_data');
                     
-                    return redirect()->route('onboarding.step1')->with('error', 
-                        "The phone number '{$phoneToCheck}' is already registered with another account (User: {$existingPhone->name}). Please use a different phone number or contact support if this is your account."
-                    );
+                    return redirect()->route('onboarding.step1')
+                        ->withInput()
+                        ->with('error', 
+                            "The phone number '{$phoneToCheck}' is already registered with another account (User: {$existingPhone->name}). Please use a different phone number or contact support if this is your account."
+                        )->with('highlight_field', 'contact_phone');
                 }
             }
 
@@ -1849,12 +2077,14 @@ class SettingsController extends Controller
                         'blocking_registration' => true
                     ]);
                     
-                    // Clear session data since registration failed
-                    session()->forget('onboarding_data');
+                    // Don't clear session data - preserve user's work!
+                    // session()->forget('onboarding_data');
                     
-                    return redirect()->route('onboarding.step1')->with('error', 
-                        "An organization with the name '{$orgToCheck}' already exists. Please choose a different organization name."
-                    );
+                    return redirect()->route('onboarding.step1')
+                        ->withInput()
+                        ->with('error', 
+                            "An organization with the name '{$orgToCheck}' already exists. Please choose a different organization name."
+                        )->with('highlight_field', 'org_name');
                 }
             }
 
@@ -1934,22 +2164,28 @@ class SettingsController extends Controller
             // Check for specific error patterns
             if (str_contains($e->getMessage(), 'CRITICAL') && str_contains($e->getMessage(), 'Duplicate email')) {
                 $errorMessage = 'This email address is already registered. Please use a different email address.';
-                // Clear session data since registration failed
-                session()->forget('onboarding_data');
-                return redirect()->route('onboarding.step1')->with('error', $errorMessage);
+                // Don't clear session data - preserve user's work!
+                return redirect()->route('onboarding.step1')
+                    ->withInput()
+                    ->with('error', $errorMessage)
+                    ->with('highlight_field', 'contact_email');
             } elseif (str_contains($e->getMessage(), 'CRITICAL') && str_contains($e->getMessage(), 'Duplicate phone')) {
                 $errorMessage = 'This phone number is already registered. Please use a different phone number.';
-                // Clear session data since registration failed
-                session()->forget('onboarding_data');
-                return redirect()->route('onboarding.step1')->with('error', $errorMessage);
+                // Don't clear session data - preserve user's work!
+                return redirect()->route('onboarding.step1')
+                    ->withInput()
+                    ->with('error', $errorMessage)
+                    ->with('highlight_field', 'contact_phone');
             } elseif (str_contains($e->getMessage(), 'SQLSTATE[23505]')) {
                 $errorMessage = 'This information already exists in our system. Please check your email, phone number, or organization name.';
-                // Clear session data since registration failed
-                session()->forget('onboarding_data');
-                return redirect()->route('onboarding.step1')->with('error', $errorMessage);
+                // Don't clear session data - preserve user's work!
+                return redirect()->route('onboarding.step1')
+                    ->withInput()
+                    ->with('error', $errorMessage);
             }
             
-            return back()->with('error', $errorMessage);
+            // For other errors, preserve session data and return to current step
+            return back()->withInput()->with('error', $errorMessage);
         }
     }
 
@@ -1958,7 +2194,36 @@ class SettingsController extends Controller
      */
     public function onboardingSuccess()
     {
-        return view('onboarding.success');
+        $user = auth()->user();
+        
+        // If user is not authenticated, redirect to login page
+        if (!$user) {
+            \Log::info('Unauthenticated user accessing onboarding success - redirecting to login');
+            return redirect()->route('login')->with('success', 'Registration completed successfully! Please log in to continue.');
+        }
+        
+        $schoolCount = $user->schools()->count();
+        $pendingRequests = DB::selectOne(
+            "SELECT COUNT(*) as count FROM shulesoft.school_creation_requests WHERE connect_user_id = ?", 
+            [$user->id]
+        )->count ?? 0;
+        
+        // Log the completion status for debugging
+        \Log::info('Onboarding success page accessed', [
+            'user_id' => $user->id,
+            'schools_count' => $schoolCount,
+            'pending_requests' => $pendingRequests
+        ]);
+        
+        $data = [
+            'school_count' => $schoolCount,
+            'pending_requests' => $pendingRequests,
+            'has_schools' => $schoolCount > 0,
+            'has_pending' => $pendingRequests > 0,
+            'user_name' => $user->name,
+        ];
+        
+        return view('onboarding.success', $data);
     }
 
     /**
