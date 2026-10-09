@@ -374,14 +374,14 @@ class FinanceController extends Controller
                 })
                 ->whereIn('ba.schema_name', $schemaArray)
                 ->where('ba.is_active', true)
-                ->groupBy('rb.id', 'rb.name', 'ba.id', 'ba.number', 'ba.schema_name', 's.school_name')
+                ->groupBy('rb.id', 'rb.name', 'ba.id', 'ba.number', 'ba.schema_name', 's.sname')
                 ->select(
                     'rb.id as bank_id',
                     'rb.name as bank_name',
                     'ba.id as account_id',
                     'ba.number',
                     'ba.schema_name',
-                    's.school_name',
+                    's.sname as school_name',
                     DB::raw('MAX(p.date) as last_transaction_date'),
                     DB::raw('COALESCE(SUM(p.amount), 0) as monthly_transactions')
                 )
@@ -881,9 +881,9 @@ class FinanceController extends Controller
             
             $results = \DB::select("
                 SELECT 
-                    cs.name as school_name,
+                    ss.sname as school_name,
                     ss.schema_name,
-                    COALESCE(ss.sname, cs.name, 'Unknown School') as settings_school_name,
+                    COALESCE(ss.sname, 'Unknown School') as settings_school_name,
                     COALESCE(payments.revenue, 0) as revenue,
                     COALESCE(expenses.total_expenses, 0) as expenses,
                     COALESCE(students.student_count, 0) as student_count,
@@ -1694,11 +1694,11 @@ class FinanceController extends Controller
                 ->join('shulesoft.setting as st', 'fic.schema_name', '=', 'st.schema_name')
                 ->whereIn('fic.schema_name', $schemaArray)
                 ->whereNull('p.id') // Not paid
-                ->groupBy('fic.student_id', 's.first_name', 's.last_name', 'st.school_name', 'fic.schema_name')
+                ->groupBy('fic.student_id', 's.first_name', 's.last_name', 'st.sname', 'fic.schema_name')
                 ->select(
                     'fic.student_id',
                     DB::raw("CONCAT(s.first_name, ' ', s.last_name) as student_name"),
-                    'st.school_name',
+                    'st.sname as school_name',
                     'fic.schema_name',
                     DB::raw('SUM(fic.amount) as outstanding_amount'),
                     DB::raw('MIN(fic.due_date) as earliest_due_date')

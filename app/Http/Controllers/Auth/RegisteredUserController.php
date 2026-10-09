@@ -17,9 +17,16 @@ class RegisteredUserController extends Controller
     /**
      * Display the registration view.
      */
-    public function create(): View
+    public function create(): RedirectResponse
     {
-        return view('auth.register');
+        // The stock Breeze registration screen was never built for this app (no auth.register view, and a plain
+        // users row has no connect_organization_id). Group accounts are created through onboarding.
+        return $this->registrationClosed();
+    }
+
+    private function registrationClosed(): RedirectResponse
+    {
+        return redirect()->route('login')->with('status', 'Registration is by invitation. Please contact ShuleSoft to set up your group account.');
     }
 
     /**
@@ -29,6 +36,10 @@ class RegisteredUserController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        if (! config('auth.public_registration', false)) {
+            return $this->registrationClosed();
+        }
+
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],

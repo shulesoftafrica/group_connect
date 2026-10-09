@@ -234,11 +234,11 @@ class SettingsController extends Controller
 
             // Get available schools and roles
             $schools = DB::select("
-                SELECT s.*, cs.school_name 
+                SELECT s.*, s.sname AS school_name 
                 FROM shulesoft.connect_schools cs
                 LEFT JOIN shulesoft.setting s ON cs.school_setting_uid = s.uid
-                WHERE cs.connect_organization_id = ? AND cs.is_active = 1
-                ORDER BY COALESCE(cs.school_name, s.school_name)
+                WHERE cs.connect_organization_id = ? AND cs.is_active = true
+                ORDER BY s.sname
             ", [Auth::user()->connect_organization_id]);
 
             $roles = DB::select("SELECT * FROM shulesoft.connect_roles ORDER BY name");
@@ -687,7 +687,6 @@ class SettingsController extends Controller
             'permissions' => 'array'
         ]);
 
-        $roleId = DB::getPdo()->lastInsertId();
         DB::insert("
             INSERT INTO shulesoft.connect_roles (name, description, created_at)
             VALUES (?, ?, NOW())
