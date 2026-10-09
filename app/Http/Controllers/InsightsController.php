@@ -1012,7 +1012,9 @@ PROMPT;
         ];
         
         return $fallbackResponses[$intent] ?? $fallbackResponses['default'];
-    }    /**
+    }  
+    
+    /**
      * Export Report
      */
     public function exportReport(Request $request)
